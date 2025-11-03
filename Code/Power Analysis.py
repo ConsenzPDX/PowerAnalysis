@@ -5,11 +5,18 @@ from Functions import off_diag
 from Functions import col
 from Functions import row
 
-A = np.array([[0,2,3],[0,5,6],[0,0,9]])
-print(A.ndim)
-print(A.shape)
-B = diag(A)
-print(B)
-print(off_diag(A))
-print(col(A))
-print(row(A))
+class bus():
+    def __init__(self, type, v, d, P, Q):
+        """
+        Constructor for the bus class
+        :param type: string input for the bus type: slack, gen, load
+        :param v: voltage at the bus
+        :param d: voltage angle at the bus
+        :param P: net real power of the bus
+        :param Q: net reactive power of the bus
+        """
+        self.type = type
+        self.v = v
+        self.d = d
+        self.P = P
+        self.Q = Q
