@@ -32,3 +32,10 @@ class T_line:
         self.Gsh = Gsh
         self.Bsh = Bsh
         self.Rating = Rating
+
+        self.impedance = complex(self.Rse, self.Xse)
+        self.admittance = 1/self.impedance
+        self.Gsh = self.admittance.real
+        self.Bsh = self.admittance.imag
+
+

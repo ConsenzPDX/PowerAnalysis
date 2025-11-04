@@ -11,10 +11,8 @@ from an initial state to a steady state.
 import string
 import numpy as np
 import matplotlib.pyplot as plt
-from Functions import diag
-from Functions import off_diag
-from Functions import col
-from Functions import row
+
+from Functions import *
 from bus import Bus
 from t_line import T_line
 
@@ -36,5 +34,24 @@ AD = T_line(Alan, Doug, 0.007, 0.055, 0.000, 0.000, 200)
 DE = T_line(Doug, Eve, 0.006, 0.045, 0.000, 0.000, 125)
 DC = T_line(Doug, Clyde, 0.011, 0.061, 0.000, 0.000, 80)
 CE = T_line(Clyde, Eve, 0.010, 0.051, 0.000, 0.000, 75)
+
+Y_AA = AB.admittance + AD.admittance
+Y_BB = AB.admittance + BE.admittance
+Y_CC = DC.admittance + CE.admittance
+Y_DD = AD.admittance + DE.admittance + DC.admittance
+Y_EE = BE.admittance + DE.admittance + CE.admittance
+
+y_bus = np.array(
+        [[  Y_AA,           -1*AB.admittance,           0,          -1*AD.admittance,   0               ],
+         [  -1*AB.admittance,   Y_BB,                   0,              0,              -1*BE.admittance],
+         [  0,                  0,                      Y_CC,       -1*DC.admittance,   -1*CE.admittance],
+         [  -1*AD.admittance,   0,              -1*DC.admittance,      Y_DD,            -1*DE.admittance],
+         [  0,              -1*BE.admittance,   -1*CE.admittance,   -1*DE.admittance,   Y_EE             ]])
+
+
+print(diag(y_bus))
+print(off_diag(y_bus))
+print(col(y_bus))
+print(row(y_bus))
 
 
