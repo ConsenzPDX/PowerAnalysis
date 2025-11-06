@@ -10,6 +10,8 @@ from an initial state to a steady state.
 import math
 import cmath
 import string
+from typing import Tuple
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -73,6 +75,19 @@ def build_ybus_polar(y_bus_rect):
             y_bus_polar[i,j] = to_polar(y_bus_rect[i,j])
     return y_bus_polar
 
+def J1_NE(bus1: Bus, bus2: Bus, ybus):
+    """
+    Jacobian Value J1 when i != j
+    ne = Not Equals
+    J1 = P_i/d_j = V_i * Y_kj * V_j * sin(d_i - d_j - theta_ij)
+    :param bus1: Bus i we are calculating the partial derivative of power for
+    :param bus2: Bus j who's angle we are using with respect to the partial derivative
+    :param ybus:Ybus of the matrix, which contains the necessary admittance values
+    :return: the partial derivative of P_i with respect to d_j for Jacobian J1
+    """
+    j1 = bus1.volts * ybus[bus1.index,bus2.index][0] * bus2.volts * math.sin(bus1.angle - bus2.angle - ybus[bus1.index,bus2.index][1])
+    return round(j1,3)
+
 # Create the buses using the Bus data type from the given data
 Alan = Bus("SL", 0.98, 0, 0, 0, 0, 0, 0)
 Betty = Bus("PV", 1.00, 210, 50, 0, 0, 0, 1)
@@ -86,8 +101,8 @@ BE = T_line(Betty, Eve, 0.006, 0.037, 0.000, 0.000, 250)
 AD = T_line(Alan, Doug, 0.007, 0.055, 0.000, 0.000, 200)
 DE = T_line(Doug, Eve, 0.006, 0.045, 0.000, 0.000, 125)
 DC = T_line(Doug, Clyde, 0.011, 0.061, 0.000, 0.000, 80)
-
 CE = T_line(Clyde, Eve, 0.010, 0.051, 0.000, 0.000, 75)
+
 Y_AA = AB.admittance + AD.admittance
 Y_BB = AB.admittance + BE.admittance
 Y_CC = DC.admittance + CE.admittance
@@ -106,4 +121,6 @@ y_bus_2 = build_ybus_rect([Alan, Betty, Clyde, Doug, Eve], [AB, BE, AD, DE, DC, 
 print(y_bus_2)
 
 test = build_ybus_polar(y_bus_2)
-print(test)
+Clyde.__voltAngle__(0)
+Doug.__voltAngle__(0)
+print(J1_NE(Clyde, Doug, test))
