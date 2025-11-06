@@ -37,5 +37,3 @@ class T_line:
         self.admittance = 1/self.impedance
         self.Gsh = self.admittance.real
         self.Bsh = self.admittance.imag
-
-
