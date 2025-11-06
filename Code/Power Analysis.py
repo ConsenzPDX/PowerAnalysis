@@ -107,4 +107,3 @@ print(y_bus_2)
 
 test = build_ybus_polar(y_bus_2)
 print(test)
-
