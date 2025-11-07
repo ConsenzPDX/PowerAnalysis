@@ -10,7 +10,7 @@ import string
 import numpy as np
 
 class Bus:
-    def __init__(self, type: string, volts: float, Pgen: float, Qgen: float, Pload:float, Qload:float, Qcap:float, index:int):
+    def __init__(self, name: str, type: str, volts: float, Pgen: float, Qgen: float, Pload:float, Qload:float, Qcap:float, index:int):
         """
         Constructor for the Bus class. Creates a bus with a type, voltage, power flow values, and reactive power cap
         :param type: SL(slack), PV(gen), or PQ(load) are the used values. This is mainly for me to use, not the program
@@ -22,6 +22,7 @@ class Bus:
         :param Qcap: Cap of the reactive power the bus can handle
         """
 
+        self.name = name
         self.type = type
         self.volts = volts
         self.Pgen = Pgen
@@ -33,3 +34,9 @@ class Bus:
 
     def __voltAngle__(self, angle):
         self.angle = angle
+
+    def __netP__(self):
+        self.netP = self.Pgen - self.Pload
+
+    def __netQ__(self):
+        self.netQ = self.Qgen - self.Qload

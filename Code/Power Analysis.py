@@ -10,6 +10,7 @@ from an initial state to a steady state.
 import math
 import cmath
 import string
+from time import process_time_ns
 from typing import Tuple
 
 import numpy as np
@@ -20,9 +21,6 @@ from Functions import *
 from bus import Bus
 from t_line import T_line
 
-# Base values and tolerance of the system
-baseMVA = 100
-V_Tolerance = 0.05
 
 def to_polar(y : complex) -> tuple:
     """
@@ -34,6 +32,20 @@ def to_polar(y : complex) -> tuple:
     r = round(r,3)
     theta = round(math.degrees(theta),3)
     return r, theta
+
+def get_index(buses: np.ndarray, i: int) -> int:
+    """
+    Function to find bus i in buses array regardless of
+    :param buses: array of system buses
+    :param i: bus index we are looking for
+    :return: bus i's position in the buses array
+    """
+    index = 0
+    for j in range(len(buses)):
+        if buses[j].index == i:
+            index = j
+            break # Exit the loop when we've found the right value
+    return index
 
 def build_ybus_rect(buses: np.ndarray, t_lines: np.ndarray) -> np.ndarray:
     """
@@ -75,19 +87,82 @@ def build_ybus_polar(y_bus_rect: np.ndarray) -> np.ndarray:
      # element [0] in the tuple is magnitude, and [1] is angle
     return y_bus_polar
 
-def get_index(buses: np.ndarray, i: int) -> int:
+def build_unknown(buses: np.ndarray) -> np.ndarray:
     """
-    Function to find bus i in buses array regardless of
-    :param buses: array of system buses
-    :param i: bus index we are looking for
-    :return: bus i's position in the buses array
+    Builds the unknown matrix in a flat start using tuples.
+    unknown[0] = bus index
+    unknown[1] = "delta" or "voltage"
+    unknown[2] = value of unkonwn matrix
+    Flat start conditions are delta = 0, voltage = 1
+    :param buses: array of buses in system
+    :return: unknown matrix using tuples
     """
-    index = 0
-    for j in range(len(buses)):
-        if buses[j].index == i:
-            index = j
-            break # Exit the loop when we've found the right value
-    return index
+    # TODO: recreate function to work without tuples
+    delta = np.zeros(buses.shape, tuple)
+    voltage = np.zeros(buses.shape, tuple)
+    for bus in buses:
+        if bus.type == "PV":
+            delta[bus.index] = (bus.index, "delta", bus.angle)
+        elif bus.type == "PQ":
+            delta[bus.index] = (bus.index, "delta", bus.angle)
+            voltage[bus.index] = (bus.index, "voltage", bus.volts)
+    delta = delta[delta != 0]
+    voltage = voltage[voltage != 0]
+    unknown = np.concatenate((delta, voltage))
+    return unknown
+
+def build_mismatch(buses: np.ndarray) -> np.ndarray:
+    """
+    Builds the unknown matrix from initial conditions using tuples
+    mismatch[0] = bus index
+    mismatch[1] = "P" or "Q"
+    mismatch[2] = value of mismatch amtrix
+    :param buses: array of buses in system
+    :return: mismatch matrix using tuples
+    """
+    # TODO: recreate function to work without tuples
+    P = np.zeros(buses.shape, tuple)
+    Q = np.zeros(buses.shape, tuple)
+    for bus in buses:
+        if bus.type == "PV":
+            P[bus.index] = (bus.index, "P", bus.netP)
+        elif bus.type == "PQ":
+            P[bus.index] = (bus.index, "P", bus.netP)
+            Q[bus.index] = (bus.index, "Q", bus.netQ)
+    P = P[P != 0]
+    Q = Q[Q != 0]
+    mismatch = np.concatenate((P, Q))
+    return mismatch
+
+def calc_p_at_bus(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
+    # TODO: comment this function
+    bus_i = buses[get_index(buses,i)]
+    v_i = bus_i.volts
+    d_i = bus_i.angle
+    P = 0
+    for bus in buses:
+        y_ij = ybus[bus_i.index, bus.index][0]
+        v_j = bus.volts
+        d_j = bus.angle
+        theta_ij = ybus[bus_i.index, bus.index][1]
+        P += v_i * y_ij * v_j * math.cos(theta_ij + d_j - d_i)
+    return P
+
+def calc_q_at_bus(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
+
+    # TODO: comment and fill out docstring
+    bus_i = buses[get_index(buses, i)]
+    v_i = bus_i.volts
+    d_i = bus_i.angle
+    Q = 0
+    for bus in buses:
+        y_ij = ybus[bus_i.index, bus.index][0]
+        v_j = bus.volts
+        d_j = bus.angle
+        theta_ij = ybus[bus_i.index, bus.index][1]
+        Q += y_ij * v_j * math.sin(theta_ij + d_j - d_i)
+    Q *= -1 * v_i
+    return Q
 
 """
 ====================================
@@ -101,7 +176,7 @@ def J1_NE(bus1: Bus, bus2: Bus, ybus: np.ndarray) -> float:
     J1 = P_i/d_j = V_i * Y_ij * V_j * sin(d_i - d_j - theta_ij)
     :param bus1: Bus i we are calculating the partial derivative of real power for
     :param bus2: Bus j whose angle we are using with respect to, for the partial derivative
-    :param ybus: Ybus matrix of the system, which contains the necessary admittance values
+    :param ybus: Ybus matrix of the system in polar form, which contains the necessary admittance values
     :return: the partial derivative of P_i with respect to d_j for Jacobian J1
     """
     v_i = bus1.volts
@@ -120,7 +195,7 @@ def J2_NE(bus1: Bus, bus2: Bus, ybus: np.ndarray) -> float:
     J2 = P_i/V_j = V_i * Y_ij * cos(d_i - d_j - theta_ij)
     :param bus1: Bus i we are calculating the partial derivative of real power for
     :param bus2: Bus j whose voltage we are using with respect to, for the partial derivative
-    :param ybus: Ybus matrix of the system, to access specific admittance values
+    :param ybus: Ybus matrix of the system in polar form, to access specific admittance values
     :return: the partial derivative of P_i with respect to V_j for Jacobian J2
     """
     v_i = bus1.volts
@@ -138,7 +213,7 @@ def J3_NE(bus1: Bus, bus2: Bus, ybus: np.ndarray) -> float:
     J3 = Q_i/d_j = -1 * V_i * Y_ij * V_j * cos(d_i - d_j - theta_ij)
     :param bus1: Bus i we are calculating the partial derivative of reactive power for
     :param bus2: Bus j whose angle we are using with respect to, for the partial derivative
-    :param ybus: Ybus matrix of the system, to access specific admittance values
+    :param ybus: Ybus matrix of the system in polar form, to access specific admittance values
     :return: the partial derivative of Q_i with respect to d_j for Jacobian J3
     """
     v_i = bus1.volts
@@ -157,7 +232,7 @@ def J4_NE(bus1: Bus, bus2: Bus, ybus: np.ndarray) -> float:
     J4 = Q_i/V_j = V_i * Y_ij * sin(d_i - d_j - theta_ij)
     :param bus1: Bus i we are calculating the partial derivative of reactive power for
     :param bus2: Bus j whose voltage we are using with respect to, for the partial derivative
-    :param ybus: Ybus matrix of the system, to access specific admittance values
+    :param ybus: Ybus matrix of the system in polar form, to access specific admittance values
     :return: the partial derivative of Q_i with respect to V_j for Jacobian J4
     """
     v_i = bus1.volts
@@ -174,7 +249,7 @@ def J1_E(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
     E = equals
     J1 = P_i/d_i = -1* V_i * sum(j = 0 -> len(buses), j != i, Y_ij * v_j * sin(d_i - d_j - theta_ij)
     :param buses: array of buses in the system
-    :param ybus: Ybus matrix of the system
+    :param ybus: Ybus matrix of the system in polar form
     :param i: index of the values we want to calculate the partial derivative of
     :return: The poartial derivative of P_i with respect to d_i for Jacobian J1
     """
@@ -198,7 +273,7 @@ def J2_E(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
     E = equals
     J1 = P_i/V_i = V_i * Y_ii * cos(theta_ii) + sum(j = 0 -> len(buses), Y_ij * v_j * cos(d_i - d_j - theta_ij)
     :param buses: array of buses in the system
-    :param ybus: Ybus matrix of the system
+    :param ybus: Ybus matrix of the system in polar form
     :param i: index of the values we want to calculate the partial derivative of
     :return: The poartial derivative of P_i with respect to V_i for Jacobian J2
     """
@@ -222,7 +297,7 @@ def J3_E(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
     E = equals
     J3 = Q_i/d_i = V_i * sum(j = 0 -> len(buses), j != i, Y_ij * v_j * cos(d_i - d_j - theta_ij)
     :param buses: array of buses in the system
-    :param ybus: Ybus matrix of the system
+    :param ybus: Ybus matrix of the system in polar form
     :param i: index of the values we want to calculate the partial derivative of
     :return: The poartial derivative of Q_i with respect to d_i for Jacobian J1
     """
@@ -246,7 +321,7 @@ def J4_E(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
     E = equals
     J4 = Q_i/V_i = -1 * V_i * Y_ii * sin(theta_ii) + sum(j = 0 -> len(buses), Y_ij * v_j * sin(d_i - d_j - theta_ij)
     :param buses: array of buses in the system
-    :param ybus: Ybus matrix of the system
+    :param ybus: Ybus matrix of the system in polar form
     :param i: index of the values we want to calculate the partial derivative of
     :return: The poartial derivative of Q_i with respect to V_i for Jacobian J2
     """
@@ -264,12 +339,94 @@ def J4_E(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
         j4 += y_ij * v_j * math.sin(d_i - d_j - theta_ij)
     return round(j4, 3)
 
+"""
+=============================
+Newton-Raphson Algorithm
+=============================
+"""
+def Newton_Raphson(system: np.ndarray, tLines: np.ndarray, baseMVA: float, V_Tolerance: float):
+    """
+
+    :param system:
+    :param tLines:
+    :param baseMVA:
+    :param V_Tolerance:
+    :return:
+    """
+
+    #TODO: The whole tuple structure of my mismatch and unknown matrices is really bad
+    # Really I just need to create an index array and a net power array for
+    # Also I can't update the bus's net power with the calcualted P and Q values
+    # The difference is what goes in, not the calculated
+    # As long as I update it again it should be fine, but I don't like using my buses to store temp variables
+
+    #TODO: Probably want to restructure my bus class as well
+    # it makes more sense to have the indeces based on how the array is given to the function
+    # currently I am fighting with myself by having a strictly defined bus index that can be placed anywhere in the array
+
+    # Creates copy of system to operate on
+    buses = np.copy(system)
+
+    # Convert Bus Power Values to per unit
+    # for bus in buses:
+    #     bus.Pgen = bus.Pgen/baseMVA
+    #     bus.Pload = bus.Pload/baseMVA
+    #     bus.Qgen = bus.Qgen/baseMVA
+    #     bus.Qload = bus.Qload/baseMVA
+    #     bus.Qcap = bus.Qcap/baseMVA
+
+
+    "Step 1: Set up the Y_bus matrix"
+    yBusRect = build_ybus_rect(buses, tLines)
+    yBusPolar = build_ybus_polar(yBusRect)
+
+    "Step 2: Impose Flat Start"
+    for bus in buses:
+        bus.__voltAngle__(0)
+        bus.__netP__()
+        bus.__netQ__()
+    unknown = build_unknown(buses) # Create unknown matrix
+
+
+
+    #for k in range(10):
+
+    "Step 3: Set up the mismatch matrix"
+    mismatch_k = build_mismatch(buses)
+
+    for val in mismatch_k:
+        index = get_index(buses, val[0])
+        if val[1] == "P":
+            buses[index].netP = calc_p_at_bus(buses, yBusPolar, val[0])
+        elif val[1] == "Q":
+            buses[index].netQ = calc_q_at_bus(buses, yBusPolar, val[0])
+    mismatch_k1 = build_mismatch(buses)
+
+    mismatch = np.zeros(len(mismatch_k))
+    for j in range(len(mismatch)):
+        mismatch[j] = mismatch_k[j][2] - mismatch_k1[j][2]
+    print(mismatch_k)
+    print(mismatch_k1)
+    print(mismatch)
+
+
+
+"""
+==============================
+Initial System Conditions 
+==============================
+"""
+
+# Base values and tolerance of the system
+baseMVA = 100
+V_Tolerance = 0.05
+
 # Create the buses using the Bus data type from the given data
-Alan = Bus("SL", 0.98, 0, 0, 0, 0, 0, 0)
-Betty = Bus("PV", 1.00, 210, 50, 0, 0, 0, 1)
-Clyde = Bus("PQ", 1.00, 0, 0, 110, 85, 150, 2)
-Doug = Bus("PQ", 1.00, 0, 0, 100, 95, 50, 3)
-Eve = Bus("PQ", 1.00, 0, 0, 150, 120, 0, 4)
+Alan = Bus("Alan", "SL", 0.98, 0, 0, 0, 0, 0, 0)
+Betty = Bus("Betty", "PV", 1.00, 210, 50, 0, 0, 0, 1)
+Clyde = Bus("Clyde", "PQ", 1.00, 0, 0, 110, 85, 150, 2)
+Doug = Bus("Doug", "PQ", 1.00, 0, 0, 100, 95, 50, 3)
+Eve = Bus("Eve", "PQ", 1.00, 0, 0, 150, 120, 0, 4)
 
 # Creates the Transmission lines using the T_line data type from given data
 AB = T_line(Alan, Betty, 0.009, 0.041, 0.000, 0.000, 125)
@@ -279,31 +436,13 @@ DE = T_line(Doug, Eve, 0.006, 0.045, 0.000, 0.000, 125)
 DC = T_line(Doug, Clyde, 0.011, 0.061, 0.000, 0.000, 80)
 CE = T_line(Clyde, Eve, 0.010, 0.051, 0.000, 0.000, 75)
 
+# Collect buses and transmission lines into arrays to pass to looping function
 busArray = np.array([Alan, Betty, Clyde, Doug, Eve])
 tLineArray = np.array([AB, BE, AD, DE, DC, CE])
+unoredered = np.array([Eve, Doug, Clyde, Betty, Alan]) # Desgined to test index != busses position
 
-unoredered = np.array([Eve, Doug, Clyde, Betty, Alan])
+print(Newton_Raphson(busArray, tLineArray, baseMVA, V_Tolerance))
 
-yBusRect = build_ybus_rect(busArray, tLineArray)
-yBusPolar = build_ybus_polar(yBusRect)
 
-# Impose Flat Start
-Alan.__voltAngle__(0)
-Betty.__voltAngle__(0)
-Clyde.__voltAngle__(0)
-Doug.__voltAngle__(0)
-Eve.__voltAngle__(0)
 
-print(J1_NE(Clyde, Doug, yBusPolar))
-print(J2_NE(Clyde, Doug, yBusPolar))
-print(J3_NE(Clyde, Doug, yBusPolar))
-print(J4_NE(Clyde, Doug, yBusPolar))
-print(J1_E(busArray, yBusPolar, 1))
-print(J1_E(unoredered, yBusPolar, 1))
-print(J2_E(busArray, yBusPolar, 2))
-print(J2_E(unoredered, yBusPolar, 2))
-print(J3_E(busArray, yBusPolar, 3))
-print(J3_E(unoredered, yBusPolar, 3))
-print(J4_E(busArray, yBusPolar, 4))
-print(J4_E(unoredered, yBusPolar, 4))
 
