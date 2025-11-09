@@ -16,6 +16,7 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from copy import copy
 
 from Functions import *
 from bus import Bus
@@ -28,6 +29,7 @@ def to_polar(y : complex) -> tuple:
     :param y: input complex number in rectangular format
     :return: a tuple of the complex number as magnitude and phase in degrees
     """
+    # TODO: check if i need to keep theta as degrees or radians for math . . .
     r, theta = cmath.polar(y)
     r = round(r,3)
     theta = round(math.degrees(theta),3)
@@ -102,10 +104,10 @@ def build_unknown(buses: np.ndarray) -> np.ndarray:
     voltage = np.zeros(buses.shape, tuple)
     for bus in buses:
         if bus.type == "PV":
-            delta[bus.index] = (bus.index, "delta", bus.angle)
+            delta[bus.index] = (bus.index, "d", bus.angle)
         elif bus.type == "PQ":
-            delta[bus.index] = (bus.index, "delta", bus.angle)
-            voltage[bus.index] = (bus.index, "voltage", bus.volts)
+            delta[bus.index] = (bus.index, "d", bus.angle)
+            voltage[bus.index] = (bus.index, "v", bus.volts)
     delta = delta[delta != 0]
     voltage = voltage[voltage != 0]
     unknown = np.concatenate((delta, voltage))
@@ -339,12 +341,155 @@ def J4_E(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
         j4 += y_ij * v_j * math.sin(d_i - d_j - theta_ij)
     return round(j4, 3)
 
+def get_jacobian_i_and_j(Jn: np.ndarray, indeces: np.ndarray) -> np.ndarray:
+    """
+    Creates a matrix of the same shape as Jn, and returns a matrix i_and_j with the 1D array of indeces converted
+    into a 2D array with the bus indeces for the partial derivative of Jn
+    :param Jn:
+    :param indeces:
+    :return:
+    """
+    i_and_j = np.zeros_like(Jn, tuple)
+    for i in range(Jn.shape[0]):
+        for j in range(Jn.shape[1]):
+            i_and_j[i, j] = (indeces[i], indeces[j])
+    return i_and_j
+
+def build_J1(buses: np.ndarray, ybus: np.ndarray, n: int) -> np.ndarray:
+    J1 = np.zeros((n-1,n-1))
+    indeces = np.zeros(len(buses))
+
+    for i in range(len(buses)):
+        if buses[i].type != "SL":
+            indeces[i] = get_index(buses,i)
+    indeces = indeces[indeces != 0]
+
+    i_and_j = get_jacobian_i_and_j(J1, indeces)
+
+    # Assign values to J1 submatrix
+    for i in range(J1.shape[0]):
+        for j in range(J1.shape[1]):
+            if i == j:
+                J1[i,j] = J1_E(buses, ybus, i_and_j[i,j][0])
+            elif i != j:
+                bus_i = buses[get_index(buses, i_and_j[i,j][0])]
+                bus_j = buses[get_index(buses, i_and_j[i,j][1])]
+                J1[i,j] = J1_NE(bus_i, bus_j, ybus)
+
+    return J1
+
+def build_J2(buses: np.ndarray, ybus: np.ndarray, n: int, m: int) -> np.ndarray:
+    """
+
+    :param buses:
+    :param ybus:
+    :param n:
+    :param m:
+    :return:
+    """
+    J2 = np.zeros((n-1,n-1-m))
+    indeces = np.zeros(len(buses))
+    for i in range(len(buses)):
+        if buses[i].type != "SL":
+            indeces[i] = get_index(buses,i)
+    indeces = indeces[indeces != 0]
+
+    i_and_j = get_jacobian_i_and_j(J2, indeces)
+
+    for i in range(J2.shape[0]):
+        for j in range(J2.shape[1]):
+            if i == j:
+                J2[i,j] = J2_E(buses, ybus, i_and_j[i,j][0])
+            elif i != j:
+                bus_i = buses[get_index(buses, i_and_j[i,j][0])]
+                bus_j = buses[get_index(buses, i_and_j[i,j][1])]
+                J2[i,j] = J2_NE(bus_i, bus_j, ybus)
+
+    return J2
+
+def build_J3(buses: np.ndarray, ybus: np.ndarray, n: int, m: int) -> np.ndarray:
+    """
+
+    :param buses:
+    :param ybus:
+    :param n:
+    :param m:
+    :return:
+    """
+    J3 = np.zeros((n-1-m,n-1))
+
+    indeces = np.zeros(len(buses))
+    for i in range(len(buses)):
+        if buses[i].type != "SL":
+            indeces[i] = get_index(buses, i)
+    indeces = indeces[indeces != 0]
+
+    i_and_j = get_jacobian_i_and_j(J3, indeces)
+
+    for i in range(J3.shape[0]):
+        for j in range(J3.shape[1]):
+            if i == j:
+                J3[i, j] = J3_E(buses, ybus, i_and_j[i, j][0])
+            elif i != j:
+                bus_i = buses[get_index(buses, i_and_j[i, j][0])]
+                bus_j = buses[get_index(buses, i_and_j[i, j][1])]
+                J3[i, j] = J3_NE(bus_i, bus_j, ybus)
+
+    return J3
+
+def build_J4(buses: np.ndarray, ybus: np.ndarray, n: int, m: int) -> np.ndarray:
+    """
+
+    :param buses:
+    :param ybus:
+    :param n:
+    :param m:
+    :return:
+    """
+    J4 = np.zeros((n-1-m,n-1-m))
+
+    indeces = np.zeros(len(buses))
+    for i in range(len(buses)):
+        if buses[i].type == "PQ":
+            indeces[i] = get_index(buses, i)
+    indeces = indeces[indeces != 0]
+
+    i_and_j = get_jacobian_i_and_j(J4, indeces)
+
+    for i in range(J4.shape[0]):
+        for j in range(J4.shape[1]):
+            if i == j:
+                J4[i, j] = J2_E(buses, ybus, i_and_j[i, j][0])
+            elif i != j:
+                bus_i = buses[get_index(buses, i_and_j[i, j][0])]
+                bus_j = buses[get_index(buses, i_and_j[i, j][1])]
+                J4[i, j] = J2_NE(bus_i, bus_j, ybus)
+
+    return J4
+
+def create_jacobian(buses: np.ndarray, ybus: np.ndarray) -> np.ndarray:
+    n = len(buses)  # number of buses
+    m = 0  # number of PV buses
+    for bus in buses:
+        if bus.type == "PV":
+            m += 1
+
+    J1 = build_J1(buses, ybus, n)
+    J2 = build_J2(buses, ybus, n, m)
+    J3 = build_J3(buses, ybus, n, m)
+    J4 = build_J4(buses, ybus, n, m)
+
+    top_half = np.hstack([J1, J2])
+    bottom_half = np.hstack([J3, J4])
+    Jacobian = np.vstack([top_half, bottom_half])
+    return Jacobian
+
 """
 =============================
 Newton-Raphson Algorithm
 =============================
 """
-def Newton_Raphson(system: np.ndarray, tLines: np.ndarray, baseMVA: float, V_Tolerance: float):
+def Newton_Raphson(system: np.ndarray, tLines: np.ndarray, baseMVA: float, V_Tolerance: float) -> np.ndarray:
     """
 
     :param system:
@@ -364,8 +509,12 @@ def Newton_Raphson(system: np.ndarray, tLines: np.ndarray, baseMVA: float, V_Tol
     # it makes more sense to have the indeces based on how the array is given to the function
     # currently I am fighting with myself by having a strictly defined bus index that can be placed anywhere in the array
 
-    # Creates copy of system to operate on
-    buses = np.copy(system)
+
+    # Creates a copy of the bus system to operate on in this function without affecting the objects passed in
+    buses = np.zeros_like(system)
+    for j in range(len(system)):
+        buses[j] = system[j]
+
 
     # Convert Bus Power Values to per unit
     # for bus in buses:
@@ -385,30 +534,63 @@ def Newton_Raphson(system: np.ndarray, tLines: np.ndarray, baseMVA: float, V_Tol
         bus.__voltAngle__(0)
         bus.__netP__()
         bus.__netQ__()
-    unknown = build_unknown(buses) # Create unknown matrix
+    unknown_k = build_unknown(buses) # Create unknown matrix
 
-
-
+    # Loop to determine convergence. Stops after n iterations in case convergence isn't reached
     #for k in range(10):
 
     "Step 3: Set up the mismatch matrix"
-    mismatch_k = build_mismatch(buses)
+    mismatch_specified = build_mismatch(buses)
 
-    for val in mismatch_k:
-        index = get_index(buses, val[0])
+    # Creates a dummy copy of the buses to store values and use in calculations
+    buses_copy = np.zeros_like(buses)
+    for j in range(len(buses)):
+        buses_copy[j] = buses[j]
+
+    # Create calcualted values for the mismatch matrix
+    for val in mismatch_specified:
+        index = get_index(buses_copy, val[0])
         if val[1] == "P":
-            buses[index].netP = calc_p_at_bus(buses, yBusPolar, val[0])
+            buses_copy[index].netP = calc_p_at_bus(buses_copy, yBusPolar, val[0])
         elif val[1] == "Q":
-            buses[index].netQ = calc_q_at_bus(buses, yBusPolar, val[0])
-    mismatch_k1 = build_mismatch(buses)
+            buses_copy[index].netQ = calc_q_at_bus(buses_copy, yBusPolar, val[0])
+    mismatch_calculated = build_mismatch(buses_copy)
 
-    mismatch = np.zeros(len(mismatch_k))
-    for j in range(len(mismatch)):
-        mismatch[j] = mismatch_k[j][2] - mismatch_k1[j][2]
-    print(mismatch_k)
-    print(mismatch_k1)
-    print(mismatch)
+    # Update buses with the new P and Q values using the calculated and specified matrices
+    # and create the mismatch matrix
+    mismatch = np.zeros(len(mismatch_specified))
+    for j in range(len(mismatch_specified)):
+        mismatch[j] = mismatch_specified[j][2] - mismatch_calculated[j][2]
+        index = get_index(buses, mismatch_specified[j][0])
+        if mismatch_specified[j][1] == "P":
+            buses[index].netP = mismatch[j]
+        elif mismatch_specified[j][1] == "Q":
+            buses[index].netQ = mismatch[j]
 
+    "Step 4: Create and fill in the Jacobian"
+    Jacobian = create_jacobian(buses, yBusPolar)
+    # TODO: verify this is correct with hand calculations
+
+    "Update Unknown Matrix"
+    J_inverse = np.linalg.inv(Jacobian)
+    vals = np.zeros_like(unknown_k)
+    for j in range(len(unknown_k)):
+        vals[j] = unknown_k[j][2]
+    unknown_k1 = np.linalg.matmul(J_inverse, mismatch) + vals
+
+    # Round all values of unknown k+1 matrix
+    for i in range(len(unknown_k1)):
+        unknown_k1[i] = round(unknown_k1[i],3)
+
+    # Assign voltage and angle values to buses
+    for i in range(len(unknown_k)):
+        index = get_index(buses, unknown_k[i][0])
+        if unknown_k[i][1] == "d":
+            buses[index].angle = unknown_k1[i]
+        elif unknown_k[i][1] == "v":
+            buses[index].volts = unknown_k1[i]
+
+    return unknown_k1
 
 
 """
@@ -440,6 +622,17 @@ CE = T_line(Clyde, Eve, 0.010, 0.051, 0.000, 0.000, 75)
 busArray = np.array([Alan, Betty, Clyde, Doug, Eve])
 tLineArray = np.array([AB, BE, AD, DE, DC, CE])
 unoredered = np.array([Eve, Doug, Clyde, Betty, Alan]) # Desgined to test index != busses position
+
+Uno = Bus("Uno", "SL", 1.0, 0, 0, 0, 0, 0, 0)
+Dos = Bus("Dos", "PQ", 1.00, 0, 0, 0.9, 0.5, 0, 1)
+Tres = Bus("Tres", "PV", 1.01, 1.3, 0, 0, 0, 0, 2)
+
+UD = T_line(Uno, Dos, 0, 0.1, 0, 0, 1)
+UT = T_line(Uno, Tres, 0, 0.25, 0, 0, 1)
+DT = T_line(Dos, Tres, 0, 0.2, 0, 0, 1)
+
+# TODO: wuh oh, the homework problem is different from this solution
+print(Newton_Raphson(np.array([Uno, Dos, Tres]), np.array([UD, UT, DT]), 1, 0.01))
 
 print(Newton_Raphson(busArray, tLineArray, baseMVA, V_Tolerance))
 
