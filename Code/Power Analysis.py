@@ -32,7 +32,7 @@ def to_polar(y : complex) -> tuple:
     # TODO: check if i need to keep theta as degrees or radians for math . . .
     r, theta = cmath.polar(y)
     r = round(r,3)
-    theta = round(math.degrees(theta),3)
+    theta = round(theta,3)
     return r, theta
 
 def get_index(buses: np.ndarray, i: int) -> int:
@@ -148,7 +148,7 @@ def calc_p_at_bus(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
         d_j = bus.angle
         theta_ij = ybus[bus_i.index, bus.index][1]
         P += v_i * y_ij * v_j * math.cos(theta_ij + d_j - d_i)
-    return P
+    return round(P)
 
 def calc_q_at_bus(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
 
@@ -164,7 +164,7 @@ def calc_q_at_bus(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
         theta_ij = ybus[bus_i.index, bus.index][1]
         Q += y_ij * v_j * math.sin(theta_ij + d_j - d_i)
     Q *= -1 * v_i
-    return Q
+    return round(Q,3)
 
 """
 ====================================
@@ -332,7 +332,7 @@ def J4_E(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
     d_i = bus_i.angle
     y_ii = ybus[bus_i.index, bus_i.index][0]
     theta_ii = ybus[bus_i.index, bus_i.index][1]
-    j4 = -1 * v_i * y_ii * math.cos(theta_ii)
+    j4 = -1 * v_i * y_ii * math.sin(theta_ii)
     for bus_j in buses:
         v_j = bus_j.volts
         y_ij = ybus[bus_i.index, bus_j.index][0]
@@ -459,11 +459,11 @@ def build_J4(buses: np.ndarray, ybus: np.ndarray, n: int, m: int) -> np.ndarray:
     for i in range(J4.shape[0]):
         for j in range(J4.shape[1]):
             if i == j:
-                J4[i, j] = J2_E(buses, ybus, i_and_j[i, j][0])
+                J4[i, j] = J4_E(buses, ybus, i_and_j[i, j][0])
             elif i != j:
                 bus_i = buses[get_index(buses, i_and_j[i, j][0])]
                 bus_j = buses[get_index(buses, i_and_j[i, j][1])]
-                J4[i, j] = J2_NE(bus_i, bus_j, ybus)
+                J4[i, j] = J4_NE(bus_i, bus_j, ybus)
 
     return J4
 
@@ -569,7 +569,7 @@ def Newton_Raphson(system: np.ndarray, tLines: np.ndarray, baseMVA: float, V_Tol
 
     "Step 4: Create and fill in the Jacobian"
     Jacobian = create_jacobian(buses, yBusPolar)
-    # TODO: verify this is correct with hand calculations
+    # TODO: verify this is correct with hand calculations for original input system
 
     "Update Unknown Matrix"
     J_inverse = np.linalg.inv(Jacobian)
@@ -631,7 +631,7 @@ UD = T_line(Uno, Dos, 0, 0.1, 0, 0, 1)
 UT = T_line(Uno, Tres, 0, 0.25, 0, 0, 1)
 DT = T_line(Dos, Tres, 0, 0.2, 0, 0, 1)
 
-# TODO: wuh oh, the homework problem is different from this solution
+# HURRAY!!!!! This works and mirrors my homework problem
 print(Newton_Raphson(np.array([Uno, Dos, Tres]), np.array([UD, UT, DT]), 1, 0.01))
 
 print(Newton_Raphson(busArray, tLineArray, baseMVA, V_Tolerance))
