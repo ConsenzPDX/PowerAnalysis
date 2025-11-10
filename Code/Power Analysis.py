@@ -1,7 +1,7 @@
 """
 EE 430 Power Analytical Methods of Power Systems - Fall 2025
 Term Project - Newton-Raphson Algorithm
-Joshua Consenz - 11/6/25
+Joshua Consenz - 11/10/25
 
 Creates a five bus system with six transmission lines, and implements the Newton-Raphson algorithm to solve the system
 from an initial state to a steady state.
@@ -32,7 +32,7 @@ def to_polar(y : complex) -> tuple:
     # TODO: check if i need to keep theta as degrees or radians for math . . .
     r, theta = cmath.polar(y)
     r = round(r,3)
-    theta = round(math.degrees(theta),3)
+    theta = round(theta,3)
     return r, theta
 
 def get_index(buses: np.ndarray, i: int) -> int:
@@ -517,12 +517,12 @@ def Newton_Raphson(system: np.ndarray, tLines: np.ndarray, baseMVA: float, V_Tol
 
 
     # Convert Bus Power Values to per unit
-    # for bus in buses:
-    #     bus.Pgen = bus.Pgen/baseMVA
-    #     bus.Pload = bus.Pload/baseMVA
-    #     bus.Qgen = bus.Qgen/baseMVA
-    #     bus.Qload = bus.Qload/baseMVA
-    #     bus.Qcap = bus.Qcap/baseMVA
+    for bus in buses:
+        bus.Pgen = bus.Pgen/baseMVA
+        bus.Pload = bus.Pload/baseMVA
+        bus.Qgen = bus.Qgen/baseMVA
+        bus.Qload = bus.Qload/baseMVA
+        bus.Qcap = bus.Qcap/baseMVA
 
 
     "Step 1: Set up the Y_bus matrix"
