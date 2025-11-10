@@ -517,12 +517,12 @@ def Newton_Raphson(system: np.ndarray, tLines: np.ndarray, baseMVA: float, V_Tol
 
 
     # Convert Bus Power Values to per unit
-    # for bus in buses:
-    #     bus.Pgen = bus.Pgen/baseMVA
-    #     bus.Pload = bus.Pload/baseMVA
-    #     bus.Qgen = bus.Qgen/baseMVA
-    #     bus.Qload = bus.Qload/baseMVA
-    #     bus.Qcap = bus.Qcap/baseMVA
+    for bus in buses:
+        bus.Pgen = bus.Pgen/baseMVA
+        bus.Pload = bus.Pload/baseMVA
+        bus.Qgen = bus.Qgen/baseMVA
+        bus.Qload = bus.Qload/baseMVA
+        bus.Qcap = bus.Qcap/baseMVA
 
 
     "Step 1: Set up the Y_bus matrix"
@@ -590,6 +590,7 @@ def Newton_Raphson(system: np.ndarray, tLines: np.ndarray, baseMVA: float, V_Tol
         elif unknown_k[i][1] == "v":
             buses[index].volts = unknown_k1[i]
 
+
     return unknown_k1
 
 
@@ -623,6 +624,7 @@ busArray = np.array([Alan, Betty, Clyde, Doug, Eve])
 tLineArray = np.array([AB, BE, AD, DE, DC, CE])
 unoredered = np.array([Eve, Doug, Clyde, Betty, Alan]) # Desgined to test index != busses position
 
+# Test system from HW 3
 Uno = Bus("Uno", "SL", 1.0, 0, 0, 0, 0, 0, 0)
 Dos = Bus("Dos", "PQ", 1.00, 0, 0, 0.9, 0.5, 0, 1)
 Tres = Bus("Tres", "PV", 1.01, 1.3, 0, 0, 0, 0, 2)
