@@ -1,7 +1,7 @@
 """
 EE 430 Power Analytical Methods of Power Systems - Fall 2025
 Term Project - Newton-Raphson Algorithm
-Joshua Consenz - 11/6/25
+Joshua Consenz - 11/10/25
 
 Creates a five bus system with six transmission lines, and implements the Newton-Raphson algorithm to solve the system
 from an initial state to a steady state.
