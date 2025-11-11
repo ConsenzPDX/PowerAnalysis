@@ -16,7 +16,7 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from copy import copy
+import copy
 
 from Functions import *
 from bus import Bus
@@ -31,22 +31,23 @@ def to_polar(y : complex) -> tuple:
     """
     r, theta = cmath.polar(y)
     r = round(r,3)
-    theta = round(theta,3)
+    theta = theta
     return r, theta
 
-def get_index(buses: np.ndarray, i: int) -> int:
-    """
-    Function to find bus i in buses array regardless of
-    :param buses: array of system buses
-    :param i: bus index we are looking for
-    :return: bus i's position in the buses array
-    """
-    index = 0
-    for j in range(len(buses)):
-        if buses[j].index == i:
-            index = j
-            break # Exit the loop when we've found the right value
-    return index
+# Function is useless, kept for posterity
+# def get_index(buses: np.ndarray, i: int) -> int:
+#     """
+#     Function to find bus i in buses array regardless of
+#     :param buses: array of system buses
+#     :param i: bus index we are looking for
+#     :return: bus i's position in the buses array
+#     """
+#     index = 0
+#     for j in range(len(buses)):
+#         if buses[j].index == i:
+#             index = j
+#             break # Exit the loop when we've found the right value
+#     return index
 
 def build_ybus_rect(buses: np.ndarray, t_lines: np.ndarray) -> np.ndarray:
     """
@@ -58,19 +59,17 @@ def build_ybus_rect(buses: np.ndarray, t_lines: np.ndarray) -> np.ndarray:
     y_bus = np.zeros((len(buses),len(buses)), complex) # create empty Ybus matrix of size nxn
     row, col = y_bus.shape # gets row and column length of Ybus matrix
     for i in range(row):
-        i_index = get_index(buses, i)
         for j in range(col):
-            j_index = get_index(buses, j)
             # Iterative loop for checking each transmission line in the t_lines array
             for k in range(len(t_lines)):
                 # Checks and assigns the off-diagonal elements based on what buses the transmission line connects
-                if ((t_lines[k].start == buses[i_index] and t_lines[k].end == buses[j_index]) or
-                        (t_lines[k].start == buses[j_index] and t_lines[k].end == buses[i_index])):
+                if ((t_lines[k].start == buses[i] and t_lines[k].end == buses[j]) or
+                        (t_lines[k].start == buses[j] and t_lines[k].end == buses[i])):
                     g_temp = round(t_lines[k].Gsh,3)
                     b_temp = round(t_lines[k].Bsh,3)
                     y_bus[i,j] = -1*complex(g_temp,b_temp)
                 # Checks and assigns diagonal elements if the transmission line touches the relevant bus
-                elif (t_lines[k].start == buses[i_index] or t_lines[k].end == buses[j_index]) and i_index == j_index:
+                elif (t_lines[k].start == buses[i] or t_lines[k].end == buses[j]) and i == j:
                     g_temp = round(t_lines[k].Gsh, 3)
                     b_temp = round(t_lines[k].Bsh, 3)
                     y_bus[i, j] += complex(g_temp,b_temp)
@@ -138,8 +137,14 @@ def build_mismatch(buses: np.ndarray) -> np.ndarray:
     return mismatch
 
 def calc_p_at_bus(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
-    # TODO: comment this function
-    bus_i = buses[get_index(buses,i)]
+    """
+    Calculates the Power at a specific bus, i, based on its connections with other buses
+    :param buses: system information of the buses
+    :param ybus: Ybus matrix
+    :param i: bus we are interested in
+    :return: Power at bus i
+    """
+    bus_i = buses[i]
     v_i = bus_i.volts
     d_i = bus_i.angle
     P = 0
@@ -152,9 +157,14 @@ def calc_p_at_bus(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
     return round(P, 3)
 
 def calc_q_at_bus(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
-
-    # TODO: comment and fill out docstring
-    bus_i = buses[get_index(buses, i)]
+    """
+    Calculates Q at bus, i, based on the system and connections of the bus
+    :param buses: system information of the buses
+    :param ybus: Ybus matrix
+    :param i: bus we are interested in
+    :return: Q at bus, i
+    """
+    bus_i = buses[i]
     v_i = bus_i.volts
     d_i = bus_i.angle
     Q = 0
@@ -256,7 +266,7 @@ def J1_E(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
     :param i: index of the values we want to calculate the partial derivative of
     :return: The partial derivative of P_i with respect to d_i for Jacobian J1
     """
-    bus_i = buses[get_index(buses,i)]
+    bus_i = buses[i]
     v_i = bus_i.volts
     d_i = bus_i.angle
     j1 = 0
@@ -280,7 +290,8 @@ def J2_E(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
     :param i: index of the values we want to calculate the partial derivative of
     :return: The partial derivative of P_i with respect to V_i for Jacobian J2
     """
-    bus_i = buses[get_index(buses,i)]
+    i = int(i)
+    bus_i = buses[i]
     v_i = bus_i.volts
     d_i = bus_i.angle
     y_ii = ybus[bus_i.index, bus_i.index][0]
@@ -304,7 +315,7 @@ def J3_E(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
     :param i: index of the values we want to calculate the partial derivative of
     :return: The partial derivative of Q_i with respect to d_i for Jacobian J1
     """
-    bus_i = buses[get_index(buses,i)]
+    bus_i = buses[i]
     v_i = bus_i.volts
     d_i = bus_i.angle
     j3 = 0
@@ -328,7 +339,7 @@ def J4_E(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
     :param i: index of the values we want to calculate the partial derivative of
     :return: The partial derivative of Q_i with respect to V_i for Jacobian J2
     """
-    bus_i = buses[get_index(buses,i)]
+    bus_i = buses[i]
     v_i = bus_i.volts
     d_i = bus_i.angle
     y_ii = ybus[bus_i.index, bus_i.index][0]
@@ -346,19 +357,26 @@ def get_jacobian_i_and_j(Jn: np.ndarray, indices: np.ndarray) -> np.ndarray:
     """
     Creates a matrix of the same shape as Jn, and returns a matrix i_and_j with the 1D array of indices converted
     into a 2D array with the bus indices for the partial derivative of Jn
-    :param Jn:
-    :param indices:
-    :return:
+    :param Jn: The empty array of the submatrix for some n
+    :param indices: The indices of the buses that are needed for the Jacobian element
+    :return: 2D array where each index of the partial derivative is mapped to its position in the jacobian submatrix
     """
     i_and_j = np.zeros_like(Jn, tuple)
     for i in range(Jn.shape[0]):
         for j in range(Jn.shape[1]):
-            i_and_j[i, j] = (indices[i], indices[j])
+            i_and_j[i, j] = (int(indices[i]), int(indices[j]))
     return i_and_j
 
 def build_J1(buses: np.ndarray, ybus: np.ndarray, n: int) -> np.ndarray:
+    """
+    Builds the Jacobian submatrix J1
+    :param buses: System information of buses
+    :param ybus: Ybus matrix of the system in polar form
+    :param n: number of buses in the system
+    :return: J1 submatrix
+    """
     J1 = np.zeros((n-1,n-1))
-    indices = np.zeros(len(buses))
+    indices = np.zeros(len(buses), int)
 
     # Calculate indices the partial derivative needs
     for i in range(len(buses)):
@@ -376,26 +394,26 @@ def build_J1(buses: np.ndarray, ybus: np.ndarray, n: int) -> np.ndarray:
             if i == j:
                 J1[i,j] = J1_E(buses, ybus, i_and_j[i,j][0])
             elif i != j:
-                bus_i = buses[get_index(buses, i_and_j[i,j][0])]
-                bus_j = buses[get_index(buses, i_and_j[i,j][1])]
+                bus_i = buses[i_and_j[i,j][0]]
+                bus_j = buses[i_and_j[i,j][1]]
                 J1[i,j] = J1_NE(bus_i, bus_j, ybus)
 
     return J1
 
 def build_J2(buses: np.ndarray, ybus: np.ndarray, n: int, m: int) -> np.ndarray:
     """
-
-    :param buses:
-    :param ybus:
-    :param n:
-    :param m:
-    :return:
+    Builds the Jacobian submatrix J2
+    :param buses: System information
+    :param ybus: Ybus Matrix
+    :param n: number of buses
+    :param m: number of PV buses
+    :return: J2 submatrix
     """
     J2 = np.zeros((n-1,n-1-m))
     indices = np.zeros(len(buses))
     for i in range(len(buses)):
         if buses[i].type != "SL":
-            indices[i] = get_index(buses,i)
+            indices[i] = i
         else:
             indices[i] = 99
     indices = indices[indices != 99]
@@ -407,27 +425,27 @@ def build_J2(buses: np.ndarray, ybus: np.ndarray, n: int, m: int) -> np.ndarray:
             if i == j:
                 J2[i,j] = J2_E(buses, ybus, i_and_j[i,j][0])
             elif i != j:
-                bus_i = buses[get_index(buses, i_and_j[i,j][0])]
-                bus_j = buses[get_index(buses, i_and_j[i,j][1])]
+                bus_i = buses[i_and_j[i,j][0]]
+                bus_j = buses[i_and_j[i,j][1]]
                 J2[i,j] = J2_NE(bus_i, bus_j, ybus)
 
     return J2
 
 def build_J3(buses: np.ndarray, ybus: np.ndarray, n: int, m: int) -> np.ndarray:
     """
-
-    :param buses:
-    :param ybus:
-    :param n:
-    :param m:
-    :return:
+    Builds the Jacobian submatrix J3
+    :param buses: System information
+    :param ybus: Ybus Matrix
+    :param n: number of buses
+    :param m: number of PV buses
+    :return: submatrix J3
     """
     J3 = np.zeros((n-1-m,n-1))
 
     indices = np.zeros(len(buses))
     for i in range(len(buses)):
         if buses[i].type != "SL":
-            indices[i] = get_index(buses, i)
+            indices[i] = i
         else:
             indices[i] = 99
     indices = indices[indices != 99]
@@ -439,27 +457,27 @@ def build_J3(buses: np.ndarray, ybus: np.ndarray, n: int, m: int) -> np.ndarray:
             if i == j:
                 J3[i, j] = J3_E(buses, ybus, i_and_j[i, j][0])
             elif i != j:
-                bus_i = buses[get_index(buses, i_and_j[i, j][0])]
-                bus_j = buses[get_index(buses, i_and_j[i, j][1])]
+                bus_i = buses[i_and_j[i, j][0]]
+                bus_j = buses[i_and_j[i, j][1]]
                 J3[i, j] = J3_NE(bus_i, bus_j, ybus)
 
     return J3
 
 def build_J4(buses: np.ndarray, ybus: np.ndarray, n: int, m: int) -> np.ndarray:
     """
-
-    :param buses:
-    :param ybus:
-    :param n:
-    :param m:
-    :return:
+    Builds the Jacobian submatrix J4
+    :param buses: System information
+    :param ybus: Ybus Matrix
+    :param n: number of buses
+    :param m: number of PV buses
+    :return: J4 submatrix
     """
     J4 = np.zeros((n-1-m,n-1-m))
 
     indices = np.zeros(len(buses))
     for i in range(len(buses)):
         if buses[i].type == "PQ":
-            indices[i] = get_index(buses, i)
+            indices[i] = i
         else:
             indices[i] = 99
     indices = indices[indices != 99]
@@ -471,13 +489,19 @@ def build_J4(buses: np.ndarray, ybus: np.ndarray, n: int, m: int) -> np.ndarray:
             if i == j:
                 J4[i, j] = J4_E(buses, ybus, i_and_j[i, j][0])
             elif i != j:
-                bus_i = buses[get_index(buses, i_and_j[i, j][0])]
-                bus_j = buses[get_index(buses, i_and_j[i, j][1])]
+                bus_i = buses[i_and_j[i, j][0]]
+                bus_j = buses[i_and_j[i, j][1]]
                 J4[i, j] = J4_NE(bus_i, bus_j, ybus)
 
     return J4
 
 def create_jacobian(buses: np.ndarray, ybus: np.ndarray) -> np.ndarray:
+    """
+    Creates the Jacobian matrix by using submatrix subroutines, and merging the submatrices together
+    :param buses: Array of buses in the system
+    :param ybus: Ybus matrix
+    :return: Complete Jacobian matrix
+    """
     n = len(buses)  # number of buses
     m = 0  # number of PV buses
     for bus in buses:
@@ -509,15 +533,10 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, baseMVA: float, V_Tole
     :return:
     """
 
-    #TODO: The whole tuple structure of my mismatch and unknown matrices is really bad
-    # Really I just need to create an index array and a net power array for
-    # Also I can't update the bus's net power with the calculated P and Q values
-    # The difference is what goes in, not the calculated
-    # As long as I update it again it should be fine, but I don't like using my buses to store temp variables
 
-    #TODO: Probably want to restructure my bus class as well
-    # it makes more sense to have the indices based on how the array is given to the function
-    # currently I am fighting with myself by having a strictly defined bus index that can be placed anywhere in the array
+    # Set the index of each bus with the order it was fed into the system
+    for i in range(len(buses)):
+        buses[i].__setIndex__(int(i))
 
     # Convert Bus Power Values to per unit
     for bus in buses:
@@ -548,11 +567,11 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, baseMVA: float, V_Tole
     # Creates a dummy copy of the buses to store values and use in calculations
     buses_copy = np.zeros_like(buses)
     for j in range(len(buses)):
-        buses_copy[j] = buses[j]
+        buses_copy[j] = copy.deepcopy(buses[j])
 
     # Create calculated values for the mismatch matrix
     for val in mismatch_specified:
-        index = get_index(buses_copy, val[0])
+        index = val[0]
         if val[1] == "P":
             buses_copy[index].netP = calc_p_at_bus(buses_copy, yBusPolar, val[0])
         elif val[1] == "Q":
@@ -564,7 +583,7 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, baseMVA: float, V_Tole
     mismatch = np.zeros(len(mismatch_specified))
     for j in range(len(mismatch_specified)):
         mismatch[j] = mismatch_specified[j][2] - mismatch_calculated[j][2]
-        index = get_index(buses, mismatch_specified[j][0])
+        index = mismatch_specified[j][0]
         if mismatch_specified[j][1] == "P":
             buses[index].netP = mismatch[j]
         elif mismatch_specified[j][1] == "Q":
@@ -587,7 +606,7 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, baseMVA: float, V_Tole
 
     # Assign voltage and angle values to buses
     for i in range(len(unknown_k)):
-        index = get_index(buses, unknown_k[i][0])
+        index = unknown_k[i][0]
         if unknown_k[i][1] == "d":
             buses[index].angle = unknown_k1[i]
         elif unknown_k[i][1] == "v":
@@ -608,11 +627,11 @@ baseMVA = 100
 V_Tolerance = 0.05
 
 # Create the buses using the Bus data type from the given data
-Alan = Bus("Alan", "SL", 0.98, 0, 0, 0, 0, 0, 0)
-Betty = Bus("Betty", "PV", 1.00, 210, 50, 0, 0, 0, 1)
-Clyde = Bus("Clyde", "PQ", 1.00, 0, 0, 110, 85, 150, 2)
-Doug = Bus("Doug", "PQ", 1.00, 0, 0, 100, 95, 50, 3)
-Eve = Bus("Eve", "PQ", 1.00, 0, 0, 150, 120, 0, 4)
+Alan = Bus("Alan", "SL", 0.98, 0, 0, 0, 0, 0)
+Betty = Bus("Betty", "PV", 1.00, 210, 50, 0, 0, 0)
+Clyde = Bus("Clyde", "PQ", 1.00, 0, 0, 110, 85, 150)
+Doug = Bus("Doug", "PQ", 1.00, 0, 0, 100, 95, 50)
+Eve = Bus("Eve", "PQ", 1.00, 0, 0, 150, 120, 0)
 
 # Creates the Transmission lines using the T_line data type from given data
 AB = T_line(Alan, Betty, 0.009, 0.041, 0.000, 0.000, 125)
@@ -625,28 +644,19 @@ CE = T_line(Clyde, Eve, 0.010, 0.051, 0.000, 0.000, 75)
 # Collect buses and transmission lines into arrays to pass to looping function
 busArray = np.array([Alan, Betty, Clyde, Doug, Eve])
 tLineArray = np.array([AB, BE, AD, DE, DC, CE])
-unOrdered = np.zeros_like(busArray) # Designed to test index != buses position
-un_tLineArray = np.zeros_like(tLineArray)
-for i in range(len(busArray)):
-    unOrdered[i] = busArray[i]
-for i in range(len(tLineArray)):
-    un_tLineArray[i] = tLineArray[i]
-
-unOrdered = unOrdered[::-1]
-un_tLineArray = un_tLineArray[::-1]
 
 # Test system from HW 3
-Uno = Bus("Uno", "SL", 1.00, 0, 0, 0, 0, 0, 0)
-Dos = Bus("Dos", "PQ", 1.00, 0, 0, 0.9, 0.5, 0, 1)
-Tres = Bus("Tres", "PV", 1.01, 1.3, 0, 0, 0, 0, 2)
+Uno = Bus("Uno", "SL", 1.00, 0, 0, 0, 0, 0)
+Dos = Bus("Dos", "PQ", 1.00, 0, 0, 0.9, 0.5, 0)
+Tres = Bus("Tres", "PV", 1.01, 1.3, 0, 0, 0, 0)
 
 UD = T_line(Uno, Dos, 0, 0.1, 0, 0, 1)
 UT = T_line(Uno, Tres, 0, 0.25, 0, 0, 1)
 DT = T_line(Dos, Tres, 0, 0.2, 0, 0, 1)
 
-Tres_1 = Bus("Tres_1", "PV", 1.01, 1.3, 0, 0, 0, 0, 2)
-Dos_1 = Bus("Dos_1", "PQ", 1.00, 0, 0, 0.9, 0.5, 0, 1)
-Uno_1 = Bus("Uno_1", "SL", 1.00, 0, 0, 0, 0, 0, 0)
+Tres_1 = Bus("Tres_1", "PV", 1.01, 1.3, 0, 0, 0, 0)
+Dos_1 = Bus("Dos_1", "PQ", 1.00, 0, 0, 0.9, 0.5, 0)
+Uno_1 = Bus("Uno_1", "SL", 1.00, 0, 0, 0, 0, 0)
 
 UD_1 = T_line(Uno_1, Dos_1, 0, 0.1, 0, 0, 1)
 UT_1 = T_line(Uno_1, Tres_1, 0, 0.25, 0, 0, 1)
@@ -658,10 +668,3 @@ print(Newton_Raphson(np.array([Uno, Dos, Tres]), np.array([UD, UT, DT]), 1, 0.01
 print(Newton_Raphson(np.array([Tres_1, Uno_1, Dos_1]), np.array([UD_1, UT_1, DT_1]), 1, 0.01))
 
 print(Newton_Raphson(busArray, tLineArray, baseMVA, V_Tolerance))
-
-# These results differ, so my index catch isn't fully foolproof
-print(Newton_Raphson(unOrdered, un_tLineArray, baseMVA, V_Tolerance))
-
-
-
-

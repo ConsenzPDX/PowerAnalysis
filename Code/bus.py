@@ -1,7 +1,7 @@
 """
 EE 430 Power Analytical Methods of Power Systems - Fall 2025
 Term Project - Newton-Raphson Algorithm
-Joshua Consenz - 11/6/25
+Joshua Consenz - 11/10/25
 
 Class for creating transmission lines in the main program Power Analysis.py
 Currently is only comprised of a constructor
@@ -10,7 +10,7 @@ import string
 import numpy as np
 
 class Bus:
-    def __init__(self, name: str, type: str, volts: float, Pgen: float, Qgen: float, Pload:float, Qload:float, Qcap:float, index:int):
+    def __init__(self, name: str, type: str, volts: float, Pgen: float, Qgen: float, Pload:float, Qload:float, Qcap:float):
         """
         Constructor for the Bus class. Creates a bus with a type, voltage, power flow values, and reactive power cap
         :param type: SL(slack), PV(gen), or PQ(load) are the used values. This is mainly for me to use, not the program
@@ -30,6 +30,8 @@ class Bus:
         self.Pload = Pload
         self.Qload = Qload
         self.Qcap = Qcap
+
+    def __setIndex__(self, index):
         self.index = index
 
     def __voltAngle__(self, angle):
