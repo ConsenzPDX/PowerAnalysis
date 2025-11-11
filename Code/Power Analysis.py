@@ -290,7 +290,6 @@ def J2_E(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
     :param i: index of the values we want to calculate the partial derivative of
     :return: The partial derivative of P_i with respect to V_i for Jacobian J2
     """
-    i = int(i)
     bus_i = buses[i]
     v_i = bus_i.volts
     d_i = bus_i.angle
@@ -559,58 +558,59 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, baseMVA: float, V_Tole
     unknown_k = build_unknown(buses) # Create unknown matrix
 
     # Loop to determine convergence. Stops after n iterations in case convergence isn't reached
-    #for k in range(10):
+    for k in range(10):
 
-    "Step 3: Set up the mismatch matrix"
-    mismatch_specified = build_mismatch(buses)
+        "Step 3: Set up the mismatch matrix"
+        mismatch_specified = build_mismatch(buses)
 
-    # Creates a dummy copy of the buses to store values and use in calculations
-    buses_copy = np.zeros_like(buses)
-    for j in range(len(buses)):
-        buses_copy[j] = copy.deepcopy(buses[j])
+        # Creates a dummy copy of the buses to store values and use in calculations
+        buses_copy = np.zeros_like(buses)
+        for j in range(len(buses)):
+            buses_copy[j] = copy.deepcopy(buses[j])
 
-    # Create calculated values for the mismatch matrix
-    for val in mismatch_specified:
-        index = val[0]
-        if val[1] == "P":
-            buses_copy[index].netP = calc_p_at_bus(buses_copy, yBusPolar, val[0])
-        elif val[1] == "Q":
-            buses_copy[index].netQ = calc_q_at_bus(buses_copy, yBusPolar, val[0])
-    mismatch_calculated = build_mismatch(buses_copy)
+        # Create calculated values for the mismatch matrix
+        for val in mismatch_specified:
+            index = val[0]
+            if val[1] == "P":
+                buses_copy[index].netP = calc_p_at_bus(buses_copy, yBusPolar, val[0])
+            elif val[1] == "Q":
+                buses_copy[index].netQ = calc_q_at_bus(buses_copy, yBusPolar, val[0])
+        mismatch_calculated = build_mismatch(buses_copy)
 
-    # Update buses with the new P and Q values using the calculated and specified matrices
-    # and create the mismatch matrix
-    mismatch = np.zeros(len(mismatch_specified))
-    for j in range(len(mismatch_specified)):
-        mismatch[j] = mismatch_specified[j][2] - mismatch_calculated[j][2]
-        index = mismatch_specified[j][0]
-        if mismatch_specified[j][1] == "P":
-            buses[index].netP = mismatch[j]
-        elif mismatch_specified[j][1] == "Q":
-            buses[index].netQ = mismatch[j]
+        # Update buses with the new P and Q values using the calculated and specified matrices
+        # and create the mismatch matrix
+        mismatch = np.zeros(len(mismatch_specified))
+        for j in range(len(mismatch_specified)):
+            mismatch[j] = mismatch_specified[j][2] - mismatch_calculated[j][2]
+            index = mismatch_specified[j][0]
+            if mismatch_specified[j][1] == "P":
+                buses[index].netP = mismatch[j]
+            elif mismatch_specified[j][1] == "Q":
+                buses[index].netQ = mismatch[j]
 
-    "Step 4: Create and fill in the Jacobian"
-    Jacobian = create_jacobian(buses, yBusPolar)
-    # TODO: verify this is correct with hand calculations for original input system
+        "Step 4: Create and fill in the Jacobian"
+        Jacobian = create_jacobian(buses, yBusPolar)
+        # TODO: verify this is correct with hand calculations for original input system
 
-    "Update Unknown Matrix"
-    J_inverse = np.linalg.inv(Jacobian)
-    vals = np.zeros_like(unknown_k)
-    for j in range(len(unknown_k)):
-        vals[j] = unknown_k[j][2]
-    unknown_k1 = np.linalg.matmul(J_inverse, mismatch) + vals
+        "Update Unknown Matrix"
+        J_inverse = np.linalg.inv(Jacobian)
+        vals = np.zeros_like(unknown_k)
+        for j in range(len(unknown_k)):
+            vals[j] = unknown_k[j][2]
+        unknown_k1 = np.linalg.matmul(J_inverse, mismatch) + vals
 
-    # Round all values of unknown k+1 matrix
-    for i in range(len(unknown_k1)):
-        unknown_k1[i] = round(unknown_k1[i],3)
+        # Round all values of unknown k+1 matrix
+        for i in range(len(unknown_k1)):
+            unknown_k1[i] = round(unknown_k1[i],3)
 
-    # Assign voltage and angle values to buses
-    for i in range(len(unknown_k)):
-        index = unknown_k[i][0]
-        if unknown_k[i][1] == "d":
-            buses[index].angle = unknown_k1[i]
-        elif unknown_k[i][1] == "v":
-            buses[index].volts = unknown_k1[i]
+        # Assign voltage and angle values to buses
+        for i in range(len(unknown_k)):
+            index = unknown_k[i][0]
+            if unknown_k[i][1] == "d":
+                buses[index].angle = unknown_k1[i]
+            elif unknown_k[i][1] == "v":
+                buses[index].volts = unknown_k1[i]
+        print(unknown_k1)
 
 
     return unknown_k1
@@ -665,6 +665,6 @@ DT_1 = T_line(Dos_1, Tres_1, 0, 0.2, 0, 0, 1)
 # HURRAY!!!!! This works and mirrors my homework problem
 print(Newton_Raphson(np.array([Uno, Dos, Tres]), np.array([UD, UT, DT]), 1, 0.01))
 
-print(Newton_Raphson(np.array([Tres_1, Uno_1, Dos_1]), np.array([UD_1, UT_1, DT_1]), 1, 0.01))
+# print(Newton_Raphson(np.array([Tres_1, Uno_1, Dos_1]), np.array([UD_1, UT_1, DT_1]), 1, 0.01))
 
 print(Newton_Raphson(busArray, tLineArray, baseMVA, V_Tolerance))
