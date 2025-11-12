@@ -1,7 +1,7 @@
 """
 EE 430 Power Analytical Methods of Power Systems - Fall 2025
 Term Project - Newton-Raphson Algorithm
-Joshua Consenz - 11/10/25
+Joshua Consenz - 11/12/25
 
 Creates a five bus system with six transmission lines, and implements the Newton-Raphson algorithm to solve the system
 from an initial state to a steady state.
@@ -139,6 +139,7 @@ def build_mismatch(buses: np.ndarray) -> np.ndarray:
 def calc_p_at_bus(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
     """
     Calculates the Power at a specific bus, i, based on its connections with other buses
+    P_i = |V_i| * sum(j = 1 -> n, |Y_ij| * |V_j| * cos(theta_ij - d_j - d_i)
     :param buses: system information of the buses
     :param ybus: Ybus matrix
     :param i: bus we are interested in
@@ -159,6 +160,7 @@ def calc_p_at_bus(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
 def calc_q_at_bus(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
     """
     Calculates Q at bus, i, based on the system and connections of the bus
+    Q_i = -1 * |V_i| * sum(j = 1 -> n, |Y_ij| * |V_j| * sin(theta_ij - d_j - d_i)
     :param buses: system information of the buses
     :param ybus: Ybus matrix
     :param i: bus we are interested in

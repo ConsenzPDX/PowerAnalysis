@@ -1,0 +1,117 @@
+# 1.) build ybus
+
+n = size(system)
+ybus = zero_matrix(size = nxn)
+for bus in system
+	for tline in system
+		if ybus indices are diagonal
+			ybus[indices] = sum of transmission lines connected to bus
+		else if ybus indices are not diagonal
+			ybus[indices] = -1 * transmission line of connection
+
+# 2.) Impose flat start
+
+# create unknown matrix
+for bus in system
+	if bus type is PV or PQ
+		delta vector = unknown deltas
+		set unknown deltas = 0
+	if bus is PQ
+		voltage vector = unknown voltages
+		set unknown deltas = 1
+unknown(k) = merge delta and bus vectors
+
+for k < 15
+
+	# 3.) Set up the mismatch matrix
+
+	# create mismatch matrix
+	for bus in system
+		if bus type is PV or PQ
+			P_init = initial P
+			P_calc = calculate_P_at_bus(system_info, ybus)
+			set P vector = P_init - P_calc
+			update bus Pnet
+		if bus type is PQ
+			Q_init = initial Q
+			Q_calc = calculate_Q_at_bus(system_info, ybus)
+			set Q vector = Q_init - Q_calc
+			update bus Qnet
+	mismatch = P vector + Q Vector
+
+	function calculate_P_at_bus()
+		P_i = power at bus_i
+		P_i = |V_i| * sum(j = 1 -> n, |Y_ij| * |V_j| * cos(theta_ij - d_j - d_i))
+
+	function calculate_Q_at_bus()
+		Q_i = reactive power at bus_i
+		Q_i = -1 * |V_i| * sum(j = 1 -> n, |Y_ij| * |V_j| * sin(theta_ij - d_j - d_i))
+
+	# 4.) Create and fill the Jacobian
+
+	Jacobian = build Jacobian()
+
+	function build J1()
+		J1 = zeros_matrix(n-1 by n-1)
+		for bus in buses
+			index = get i and j for partial derivatives
+			if i == j
+				J1 equals formula
+			else
+				J1 not equals formula
+
+	function build J2()
+		J2 = zeros_matrix(n-1 by n-1-m)
+		for bus in buses
+			index = get i and j for partial derivatives
+			if i == j
+				J2 equals formula
+			else
+				J2 not equals formula
+
+	function build J3()
+		J3 = zeros_matrix(n-1-m by n-1)
+		for bus in buses
+			index = get i and j for partial derivatives
+			if i == j
+				J3 equals formula
+			else
+				J3 not equals formula
+
+	function build J4()
+		J4 = zeros_matrix(n-1-m by n-1-m)
+		for bus in buses
+			index = get i and j for partial derivatives
+			if i == j
+				J4 equals formula
+			else
+				J4 not equals formula
+
+	function build Jacobian()
+		merge horizontally J1 and J2
+		merge horizontally J3 and J4
+		merge vertiacally the above merges
+		return Jacobian
+
+	# 5.) Update unknown k+1
+
+	Jacobian_inverse = invert_matrix(Jacobian)
+	unknown_k+1 = mismatch * Jacobian_inverse + unknown_k
+
+	for bus in system
+		bus voltage = unknown_k+1 voltage
+		bus angle = unkown_k+1 voltage
+
+	# Check if system converged
+	for voltages in unknown_k+1
+		if unknown_k+1 voltage - unknown_k voltage < voltage_tolerance
+			break out of for loop
+			print(system converged in k iterations)
+
+	# Check if Q at PV bus has changed
+	for bus in system
+		if bus is a PV bus
+			new_Q = calculate_Q_at_bus
+			if new_Q > Qcap
+				bus is now a PQ bus
+# Restart loop with updated voltage and power values
