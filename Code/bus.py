@@ -34,6 +34,9 @@ class Bus:
     def __setIndex__(self, index):
         self.index = index
 
+    def __setVoltage__(self, voltage):
+        self.volts = voltage
+
     def __voltAngle__(self, angle):
         self.angle = angle
 
