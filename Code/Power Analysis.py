@@ -10,7 +10,7 @@ from an initial state to a steady state.
 import math
 import cmath
 import string
-from time import process_time_ns
+import time
 from typing import Tuple
 
 import numpy as np
@@ -524,16 +524,25 @@ def create_jacobian(buses: np.ndarray, ybus: np.ndarray) -> np.ndarray:
 Newton-Raphson Algorithm
 =============================
 """
-def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, baseMVA: float, V_Tolerance: float) -> np.ndarray:
+def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, Tolerance: float, iterations = 10) -> np.ndarray:
+    """
+    Newton-Raphson Algorithm designed to operate on a system of buses and transmission lines.
+    The buses and Transmission lines are designed to use the Bus and T_line classes to build them.
+    The Algorithm iterates a number of times equal to the iteration parameter, and checks for system convergence based
+    on the Tolerance parameter.
+    :param buses: Numpy Array of the buses that describe the system being analyzed
+    :param tLines: Numpy Array of the transmission lines that connect the busses in the system
+    :param base_mva: Base real power value to convert all P and Q values into per unit values
+    :param Tolerance: Tolerance to check is an iteration has converged to a solution
+    :param iterations: The maximum number of iterations allowed the program, if unspecified iterations = 10
+    :return: The unknown matrix after the system has converged, or the maximum number of iterations has been reached
     """
 
-    :param buses:
-    :param tLines:
-    :param baseMVA:
-    :param V_Tolerance:
-    :return:
-    """
+    # Set start time, to calculate how long the program needs to run for
+    start_time = time.time()
 
+    # Convergence criterion
+    criterion = 0.01
 
     # Set the index of each bus with the order it was fed into the system
     for i in range(len(buses)):
@@ -541,28 +550,37 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, baseMVA: float, V_Tole
 
     # Convert Bus Power Values to per unit
     for bus in buses:
-        bus.Pgen = bus.Pgen/baseMVA
-        bus.Pload = bus.Pload/baseMVA
-        bus.Qgen = bus.Qgen/baseMVA
-        bus.Qload = bus.Qload/baseMVA
-        bus.Qcap = bus.Qcap/baseMVA
+        bus.Pgen = bus.Pgen / base_mva
+        bus.Pload = bus.Pload / base_mva
+        bus.Qgen = bus.Qgen / base_mva
+        bus.Qload = bus.Qload / base_mva
+        bus.Qcap = bus.Qcap / base_mva
 
 
     "Step 1: Set up the Y_bus matrix"
-    yBusRect = build_ybus_rect(buses, tLines)
-    yBusPolar = build_ybus_polar(yBusRect)
+    yBusRect = build_ybus_rect(buses, tLines) # Build the ybus using the complex numbers in rectangular form
+    yBusPolar = build_ybus_polar(yBusRect) # Converts the rectangular complex numbers to a tuple representing polar form
 
     "Step 2: Impose Flat Start"
     for bus in buses:
-        bus.__voltAngle__(0)
-        bus.__netP__()
-        bus.__netQ__()
-    unknown_k = build_unknown(buses) # Create unknown matrix
+        # If the bus is s PQ bus, set the voltage to flat start value, v = 1
+        if bus.type == "PQ":
+                bus.__setVoltage__(1)
+        bus.__voltAngle__(0) # Set the voltage angle of the bus to 0 radians
+        bus.__netP__() # Calculates the net real Power based on the generated and demanded power of the bus
+        bus.__netQ__() # Calculates the net reactive power of the bus using the generated and femended values
 
-    # Loop to determine convergence. Stops after n iterations in case convergence isn't reached
-    for k in range(10):
+
+    # Loop to determine convergence. Stops after iterations in case convergence isn't reached
+    for k in range(iterations):
+
+        # Boolean that is checked every for loop to see if system has converged
+        converged = False
+
+        unknown_k = build_unknown(buses)  # Create unknown matrix from current conditions
 
         "Step 3: Set up the mismatch matrix"
+        # Create the specified half of the mismatch matrix
         mismatch_specified = build_mismatch(buses)
 
         # Creates a dummy copy of the buses to store values and use in calculations
@@ -577,14 +595,17 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, baseMVA: float, V_Tole
                 buses_copy[index].netP = calc_p_at_bus(buses_copy, yBusPolar, val[0])
             elif val[1] == "Q":
                 buses_copy[index].netQ = calc_q_at_bus(buses_copy, yBusPolar, val[0])
+        # Build the calculated portion of the mismatch matrix
         mismatch_calculated = build_mismatch(buses_copy)
 
         # Update buses with the new P and Q values using the calculated and specified matrices
-        # and create the mismatch matrix
+        # and create the complete mismatch matrix
         mismatch = np.zeros(len(mismatch_specified))
         for j in range(len(mismatch_specified)):
+            # Subtract specified - calculated for each bus
             mismatch[j] = mismatch_specified[j][2] - mismatch_calculated[j][2]
             index = mismatch_specified[j][0]
+            # Now update the buses with the new net power values
             if mismatch_specified[j][1] == "P":
                 buses[index].netP = mismatch[j]
             elif mismatch_specified[j][1] == "Q":
@@ -595,10 +616,12 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, baseMVA: float, V_Tole
         # TODO: verify this is correct with hand calculations for original input system
 
         "Update Unknown Matrix"
-        J_inverse = np.linalg.inv(Jacobian)
+        J_inverse = np.linalg.inv(Jacobian) # Invert the Jacobian for the calculation
+        # Create a matrix of only values for the mismatch matrix
         vals = np.zeros_like(unknown_k)
         for j in range(len(unknown_k)):
             vals[j] = unknown_k[j][2]
+        # Calculate the new unknown matrix values
         unknown_k1 = np.linalg.matmul(J_inverse, mismatch) + vals
 
         # Round all values of unknown k+1 matrix
@@ -612,9 +635,34 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, baseMVA: float, V_Tole
                 buses[index].angle = unknown_k1[i]
             elif unknown_k[i][1] == "v":
                 buses[index].volts = unknown_k1[i]
-        print(unknown_k1)
 
+        # Check for convergence
+        for power in mismatch:
+            if abs(power) >= criterion:
+                converged = False
+                break
+            else:
+                converged = True
 
+        # Check Q at the PV bus
+        for bus in buses:
+            if bus.type == "PV" and bus.netQ > bus.Qcap :
+                print(f"PV bus, {bus.name}, changed to a PQ bus after iteration {k}")
+                bus.type = "PQ"
+
+        # print(mismatch)
+        # Message to the user if the system converged
+        if converged:
+            end_time = time.time()
+            length = end_time - start_time
+            print(f"System converged in {k} Iterations over {round(length, 3)} seconds")
+            break
+
+    # Message to the user in case the system didn't converge
+    if converged == False:
+        end_time = time.time()
+        length = end_time - start_time
+        print(f"System did not converge after {k} Iterations over {round(length,3)} seconds")
     return unknown_k1
 
 
@@ -630,7 +678,7 @@ V_Tolerance = 0.05
 
 # Create the buses using the Bus data type from the given data
 Alan = Bus("Alan", "SL", 0.98, 0, 0, 0, 0, 0)
-Betty = Bus("Betty", "PV", 1.00, 210, 50, 0, 0, 0)
+Betty = Bus("Betty", "PV", 1.00, 210, 50, 0, 0, 100)
 Clyde = Bus("Clyde", "PQ", 1.00, 0, 0, 110, 85, 150)
 Doug = Bus("Doug", "PQ", 1.00, 0, 0, 100, 95, 50)
 Eve = Bus("Eve", "PQ", 1.00, 0, 0, 150, 120, 0)
@@ -665,8 +713,7 @@ UT_1 = T_line(Uno_1, Tres_1, 0, 0.25, 0, 0, 1)
 DT_1 = T_line(Dos_1, Tres_1, 0, 0.2, 0, 0, 1)
 
 # HURRAY!!!!! This works and mirrors my homework problem
-print(Newton_Raphson(np.array([Uno, Dos, Tres]), np.array([UD, UT, DT]), 1, 0.01))
-
+print(Newton_Raphson(np.array([Uno, Dos, Tres]), np.array([UD, UT, DT]), 1, 0.01, 100))
 # print(Newton_Raphson(np.array([Tres_1, Uno_1, Dos_1]), np.array([UD_1, UT_1, DT_1]), 1, 0.01))
 
-print(Newton_Raphson(busArray, tLineArray, baseMVA, V_Tolerance))
+print(Newton_Raphson(busArray, tLineArray, baseMVA, V_Tolerance, 20))
