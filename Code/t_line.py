@@ -3,7 +3,7 @@ EE 430 Power Analytical Methods of Power Systems - Fall 2025
 Term Project - Newton-Raphson Algorithm
 Joshua Consenz - 11/6/25
 
-Class for creating buses in the main program Power Analysis.py
+Class for creating buses in the main program newton_raphson.py
 Currently is only comprised of a constructor
 """
 import string
