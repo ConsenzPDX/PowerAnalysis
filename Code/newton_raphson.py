@@ -30,8 +30,6 @@ def to_polar(y : complex) -> tuple:
     :return: a tuple of the complex number as magnitude and phase in degrees
     """
     r, theta = cmath.polar(y)
-    r = round(r,3)
-    theta = theta
     return r, theta
 
 # Function is useless, kept for posterity
@@ -65,13 +63,13 @@ def build_ybus_rect(buses: np.ndarray, t_lines: np.ndarray) -> np.ndarray:
                 # Checks and assigns the off-diagonal elements based on what buses the transmission line connects
                 if ((t_lines[k].start == buses[i] and t_lines[k].end == buses[j]) or
                         (t_lines[k].start == buses[j] and t_lines[k].end == buses[i])):
-                    g_temp = round(t_lines[k].Gsh,3)
-                    b_temp = round(t_lines[k].Bsh,3)
+                    g_temp = t_lines[k].Gsh
+                    b_temp = t_lines[k].Bsh
                     y_bus[i,j] = -1*complex(g_temp,b_temp)
                 # Checks and assigns diagonal elements if the transmission line touches the relevant bus
                 elif (t_lines[k].start == buses[i] or t_lines[k].end == buses[j]) and i == j:
-                    g_temp = round(t_lines[k].Gsh, 3)
-                    b_temp = round(t_lines[k].Bsh, 3)
+                    g_temp = t_lines[k].Gsh
+                    b_temp = t_lines[k].Bsh
                     y_bus[i, j] += complex(g_temp,b_temp)
     return y_bus
 
@@ -87,7 +85,7 @@ def build_ybus_polar(y_bus_rect: np.ndarray) -> np.ndarray:
     for i in range(row):
         for j in range(col):
             y_bus_polar[i,j] = to_polar(y_bus_rect[i,j])
-     # element [0] in the tuple is magnitude, and [1] is angle
+     # element [0] in the tuple is magnitude, and [1] is the angle
     return y_bus_polar
 
 def build_unknown(buses: np.ndarray) -> np.ndarray:
@@ -154,7 +152,7 @@ def calc_p_at_bus(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
         d_j = bus.angle
         theta_ij = ybus[bus_i.index, bus.index][1]
         P += v_i * y_ij * v_j * math.cos(theta_ij + d_j - d_i)
-    return round(P, 3)
+    return P
 
 def calc_q_at_bus(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
     """
@@ -176,7 +174,7 @@ def calc_q_at_bus(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
         theta_ij = ybus[bus_i.index, bus.index][1]
         Q += y_ij * v_j * math.sin(theta_ij + d_j - d_i)
     Q *= -1 * v_i
-    return round(Q,3)
+    return Q
 
 """
 ====================================
@@ -200,7 +198,11 @@ def J1_NE(bus1: Bus, bus2: Bus, ybus: np.ndarray) -> float:
     d_j = bus2.angle
     theta_ij = ybus[bus1.index,bus2.index][1]
     j1 = v_i * y_ij * v_j * math.sin(d_i - d_j - theta_ij)
-    return round(j1,3)
+    # print("="*50)
+    # print("v_i:", v_i, "v_j:",v_j, "d_i:", d_i, "d_j:", d_j, "y_ij",y_ij, "theta_ij:",theta_ij)
+    # print("="*50)
+    # quit()
+    return j1
 
 def J2_NE(bus1: Bus, bus2: Bus, ybus: np.ndarray) -> float:
     """
@@ -218,7 +220,7 @@ def J2_NE(bus1: Bus, bus2: Bus, ybus: np.ndarray) -> float:
     d_j = bus2.angle
     theta_ij = ybus[bus1.index, bus2.index][1]
     j2 = v_i * y_ij * math.cos(d_i - d_j - theta_ij)
-    return round(j2,3)
+    return j2
 
 def J3_NE(bus1: Bus, bus2: Bus, ybus: np.ndarray) -> float:
     """
@@ -237,7 +239,7 @@ def J3_NE(bus1: Bus, bus2: Bus, ybus: np.ndarray) -> float:
     d_j = bus2.angle
     theta_ij = ybus[bus1.index, bus2.index][1]
     j3 = -1 * v_i * y_ij * v_j * math.cos(d_i - d_j - theta_ij)
-    return round(j3, 3)
+    return j3
 
 def J4_NE(bus1: Bus, bus2: Bus, ybus: np.ndarray) -> float:
     """
@@ -255,7 +257,7 @@ def J4_NE(bus1: Bus, bus2: Bus, ybus: np.ndarray) -> float:
     d_j = bus2.angle
     theta_ij = ybus[bus1.index, bus2.index][1]
     j4 = v_i * y_ij * math.sin(d_i - d_j - theta_ij)
-    return round(j4,3)
+    return j4
 
 def J1_E(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
     """
@@ -279,7 +281,7 @@ def J1_E(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
             theta_ij = ybus[bus_i.index, bus_j.index][1]
             j1 += y_ij * v_j * math.sin(d_i - d_j - theta_ij)
     j1 *= -1 * v_i
-    return round(j1,3)
+    return j1
 
 def J2_E(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
     """
@@ -303,7 +305,7 @@ def J2_E(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
         d_j = bus_j.angle
         theta_ij = ybus[bus_i.index, bus_j.index][1]
         j2 += y_ij * v_j * math.cos(d_i - d_j - theta_ij)
-    return round(j2,3)
+    return j2
 
 def J3_E(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
     """
@@ -327,7 +329,7 @@ def J3_E(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
             theta_ij = ybus[bus_i.index, bus_j.index][1]
             j3 += y_ij * v_j * math.cos(d_i - d_j - theta_ij)
     j3 *= v_i
-    return round(j3, 3)
+    return j3
 
 def J4_E(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
     """
@@ -351,7 +353,7 @@ def J4_E(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
         d_j = bus_j.angle
         theta_ij = ybus[bus_i.index, bus_j.index][1]
         j4 += y_ij * v_j * math.sin(d_i - d_j - theta_ij)
-    return round(j4, 3)
+    return j4
 
 def get_jacobian_i_and_j(Jn: np.ndarray, indices: np.ndarray) -> np.ndarray:
     """
@@ -507,7 +509,7 @@ def create_jacobian(buses: np.ndarray, ybus: np.ndarray) -> np.ndarray:
     for bus in buses:
         if bus.type == "PV":
             m += 1
-    # TODO: check
+    # TODO: in presentation create plot looking at dP/d_delta and dQ/d_delta
     J1 = build_J1(buses, ybus, n)
     J2 = build_J2(buses, ybus, n, m)
     J3 = build_J3(buses, ybus, n, m)
@@ -523,7 +525,7 @@ def create_jacobian(buses: np.ndarray, ybus: np.ndarray) -> np.ndarray:
 Newton-Raphson Algorithm
 =============================
 """
-def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTolerance: float, iterations = 10, name = "System") -> np.ndarray:
+def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTolerance: float, iterations = 10, criterion = 0.01, name = "System") -> np.ndarray:
     """
     Newton-Raphson Algorithm designed to operate on a system of buses and transmission lines.
     The buses and Transmission lines are designed to use the Bus and T_line classes to build them.
@@ -534,15 +536,13 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTole
     :param base_mva: Base real power value to convert all P and Q values into per unit values
     :param vTolerance: Tolerance to check is an iteration has converged to a solution
     :param iterations: The maximum number of iterations allowed the program, if unspecified iterations = 10
+    :param criterion: Convergence criterion for the mismatch matrix. If unspecified, it is 1%
     :param name: Name of the system
     :return: The unknown matrix after the system has converged, or the maximum number of iterations has been reached
     """
 
     # Set start time, to calculate how long the program needs to run for
     start_time = time.time()
-
-    # Convergence criterion
-    criterion = 0.01
 
     # Print Start of Algorithm message
     print(f"Beginning Newton-Raphson Power Flow Solution for {name}")
@@ -606,13 +606,6 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTole
         for j in range(len(mismatch_specified)):
             # Subtract specified - calculated for each bus
             mismatch[j] = mismatch_specified[j][2] - mismatch_calculated[j][2]
-            index = mismatch_specified[j][0]
-            # TODO: Talk to Midrar in office hours about if I update the P and Q of the buses during each iteration
-            # Now update the buses with the new net power values
-            # if mismatch_specified[j][1] == "P":
-            #     buses[index].netP = mismatch[j]
-            # elif mismatch_specified[j][1] == "Q":
-            #     buses[index].netQ = mismatch[j]
 
         "Step 4: Create and fill in the Jacobian"
         Jacobian = create_jacobian(buses, yBusPolar)
@@ -626,10 +619,6 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTole
             vals[j] = unknown_k[j][2]
         # Calculate the new unknown matrix values
         unknown_k1 = np.linalg.matmul(J_inverse, mismatch) + vals
-
-        # Round all values of unknown k+1 matrix
-        for i in range(len(unknown_k1)):
-            unknown_k1[i] = round(unknown_k1[i],3)
 
         # Assign voltage and angle values to buses
         for i in range(len(unknown_k)):
@@ -652,7 +641,6 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTole
                 print(f"PV bus, {bus.name}, changed to a PQ bus after iteration {k}")
                 bus.type = "PQ"
 
-        print(mismatch)
         # Message to the user if the system converged
         if converged:
             end_time = time.time()
