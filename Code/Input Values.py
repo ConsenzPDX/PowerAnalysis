@@ -5,7 +5,7 @@ Joshua Consenz - 11/14/25
 
 System conditions and inputs to the system to test the algorithms I made
 """
-from numpy.ma.core import zeros_like
+
 
 from newton_raphson import *
 
@@ -39,7 +39,7 @@ CE = T_line(Clyde, Eve, 0.010, 0.051, 0.000, 0.000, 75)
 busArray = np.array([Alan, Betty, Clyde, Doug, Eve])
 tLineArray = np.array([AB, BE, AD, DE, DC, CE])
 
-FiveBus_PQ = Newton_Raphson(busArray, tLineArray, baseMVA, V_Tolerance, 100, 0.001, name)
+FiveBus_PQ = Newton_Raphson(busArray, tLineArray, baseMVA, V_Tolerance, 100, 0.01, name)
 
 prnt = np.zeros_like(FiveBus_PQ)
 for i in range(len(FiveBus_PQ)):
