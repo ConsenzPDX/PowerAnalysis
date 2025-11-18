@@ -6,7 +6,6 @@ Joshua Consenz - 11/3/25
 Defines the functions DAIG, OFF-DIAG, COL, and ROW for use in the main Newton-Raphson algorithm
 """
 import numpy as np
-import matplotlib.pyplot as plt
 
 def diag(a):
     """

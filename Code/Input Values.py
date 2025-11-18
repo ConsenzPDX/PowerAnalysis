@@ -1,11 +1,11 @@
 """
 EE 430 Power Analytical Methods of Power Systems - Fall 2025
 Term Project - Newton-Raphson Algorithm
-Joshua Consenz - 11/14/25
+Joshua Consenz - 11/17/25
 
 System conditions and inputs to the system to test the algorithms I made
 """
-from numpy.ma.core import zeros_like
+
 
 from newton_raphson import *
 
@@ -39,15 +39,13 @@ CE = T_line(Clyde, Eve, 0.010, 0.051, 0.000, 0.000, 75)
 busArray = np.array([Alan, Betty, Clyde, Doug, Eve])
 tLineArray = np.array([AB, BE, AD, DE, DC, CE])
 
-FiveBus_PQ = Newton_Raphson(busArray, tLineArray, baseMVA, V_Tolerance, 100, 0.001, name)
+FiveBus_PQ = Newton_Raphson(busArray, tLineArray, baseMVA, V_Tolerance, 100, 0.01, name)
 
 prnt = np.zeros_like(FiveBus_PQ)
 for i in range(len(FiveBus_PQ)):
     prnt[i] = round(FiveBus_PQ[i], 3)
 print("Final Unknown matrix:", prnt)
 
-ybusRect = build_ybus_rect(busArray, tLineArray)
-# print(build_ybus_polar(ybusRect))
 
 """
 =========================================
@@ -73,7 +71,7 @@ Homework 3 Problem 1 Test Case
 # #
 # # # HURRAY!!!!! This works and mirrors my homework problem
 # print("\n")
-# print(Newton_Raphson(np.array([Uno, Dos, Tres]), np.array([UD, UT, DT]), 1, 0.05, 100, "HW3"))
+# print(Newton_Raphson(np.array([Uno, Dos, Tres]), np.array([UD, UT, DT]), 1, 0.05, 100, 0.01, "HW3"))
 # print("\n")
 # print(Newton_Raphson(np.array([Tres_1, Uno_1, Dos_1]), np.array([UD_1, UT_1, DT_1]), 1, 0.01))
 
