@@ -1,7 +1,7 @@
 """
 EE 430 Power Analytical Methods of Power Systems - Fall 2025
 Term Project - Newton-Raphson Algorithm
-Joshua Consenz - 11/14/25
+Joshua Consenz - 11/17/25
 
 Creates a five bus system with six transmission lines, and implements the Newton-Raphson algorithm to solve the system
 from an initial state to a steady state.
@@ -31,21 +31,6 @@ def to_polar(y : complex) -> tuple:
     """
     r, theta = cmath.polar(y)
     return r, theta
-
-# Function is useless, kept for posterity
-# def get_index(buses: np.ndarray, i: int) -> int:
-#     """
-#     Function to find bus i in buses array regardless of
-#     :param buses: array of system buses
-#     :param i: bus index we are looking for
-#     :return: bus i's position in the buses array
-#     """
-#     index = 0
-#     for j in range(len(buses)):
-#         if buses[j].index == i:
-#             index = j
-#             break # Exit the loop when we've found the right value
-#     return index
 
 def build_ybus_rect(buses: np.ndarray, t_lines: np.ndarray) -> np.ndarray:
     """
@@ -79,8 +64,7 @@ def build_ybus_polar(y_bus_rect: np.ndarray) -> np.ndarray:
     :param y_bus_rect: an nxn matrix of a Ybus with complex values in rectangular format
     :return: an nxn matrix of the input Ybus matrix with the complex numbers changed to polar form as a tuple
     """
-    # TODO: check ybus is implemented correctly
-    y_bus_polar = np.zeros(y_bus_rect.shape,tuple)
+    y_bus_polar = np.zeros(y_bus_rect.shape, tuple)
     row, col = y_bus_polar.shape
     for i in range(row):
         for j in range(col):
@@ -525,7 +509,8 @@ def create_jacobian(buses: np.ndarray, ybus: np.ndarray) -> np.ndarray:
 Newton-Raphson Algorithm
 =============================
 """
-def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTolerance: float, iterations = 10, criterion = 0.01, name = "System") -> np.ndarray:
+def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTolerance: float, iterations = 15,
+                   criterion = 0.01, name = "System") -> np.ndarray:
     """
     Newton-Raphson Algorithm designed to operate on a system of buses and transmission lines.
     The buses and Transmission lines are designed to use the Bus and T_line classes to build them.
@@ -534,20 +519,23 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTole
     :param buses: Numpy Array of the buses that describe the system being analyzed
     :param tLines: Numpy Array of the transmission lines that connect the busses in the system
     :param base_mva: Base real power value to convert all P and Q values into per unit values
-    :param vTolerance: Tolerance to check is an iteration has converged to a solution
+    :param vTolerance: Voltage tolerance TODO: figure this out and create description
     :param iterations: The maximum number of iterations allowed the program, if unspecified iterations = 10
     :param criterion: Convergence criterion for the mismatch matrix. If unspecified, it is 1%
     :param name: Name of the system
-    :return: The unknown matrix after the system has converged, or the maximum number of iterations has been reached
+    :return: The unknown matrix after the system has reached convergence, or the maximum number of iterations has been reached
     """
 
     # Set start time, to calculate how long the program needs to run for
     start_time = time.time()
 
+    # Define output of the system
+    unknown_k1 = 0
+
     # Print Start of Algorithm message
     print(f"Beginning Newton-Raphson Power Flow Solution for {name}")
 
-    # Set the index of each bus with the order it was fed into the system
+    # Set the index of each bus with the order it was input to the function
     for i in range(len(buses)):
         buses[i].__setIndex__(int(i))
 
@@ -600,8 +588,8 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTole
         # Build the calculated portion of the mismatch matrix
         mismatch_calculated = build_mismatch(buses_copy)
 
-        # Update buses with the new P and Q values using the calculated and specified matrices
-        # and create the complete mismatch matrix
+        # Create complete mismatch matrix as an array of floats for calculations
+        # mismatch_specified will be used for checking if the matrix has a P or Q value
         mismatch = np.zeros(len(mismatch_specified))
         for j in range(len(mismatch_specified)):
             # Subtract specified - calculated for each bus
@@ -613,14 +601,14 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTole
 
         "Update Unknown Matrix"
         J_inverse = np.linalg.inv(Jacobian) # Invert the Jacobian for the calculation
-        # Create a matrix of only values for the mismatch matrix
+        # Create a matrix of only values for the unknown matrix for the purpose of calculations
         vals = np.zeros_like(unknown_k)
         for j in range(len(unknown_k)):
             vals[j] = unknown_k[j][2]
         # Calculate the new unknown matrix values
         unknown_k1 = np.linalg.matmul(J_inverse, mismatch) + vals
 
-        # Assign voltage and angle values to buses
+        # Update voltage and angle values of the buses
         for i in range(len(unknown_k)):
             index = unknown_k[i][0]
             if unknown_k[i][1] == "d":
@@ -628,7 +616,7 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTole
             elif unknown_k[i][1] == "v":
                 buses[index].volts = unknown_k1[i]
 
-        # Check for convergence
+        # Check for convergence by checking that all values in the mismatch are under the criterion
         if all(abs(power) < criterion for power in mismatch):
             converged = True
         else:
@@ -643,8 +631,10 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTole
 
         # Message to the user if the system converged
         if converged:
+            # Calculate time for output message
             end_time = time.time()
             length = end_time - start_time
+            # Print message as an fString
             print(f"System converged in {k} Iterations over {round(length, 3)} seconds")
             break
 
