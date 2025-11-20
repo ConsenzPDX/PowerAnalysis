@@ -1,11 +1,10 @@
 """
 EE 430 Power Analytical Methods of Power Systems - Fall 2025
 Term Project - Newton-Raphson Algorithm
-Joshua Consenz - 11/17/25
+Joshua Consenz - 11/19/25
 
 System conditions and inputs to the system to test the algorithms I made
 """
-
 
 from newton_raphson import *
 
@@ -45,39 +44,3 @@ prnt = np.zeros_like(FiveBus_PQ)
 for i in range(len(FiveBus_PQ)):
     prnt[i] = round(FiveBus_PQ[i], 3)
 print("Final Unknown matrix:", prnt)
-
-
-"""
-=========================================
-Homework 3 Problem 1 Test Case
-=========================================
-"""
-
-# Uno = Bus("Uno", "SL", 1.00, 0, 0, 0, 0, 0)
-# Dos = Bus("Dos", "PQ", 1.00, 0, 0, 0.9, 0.5, 0)
-# Tres = Bus("Tres", "PV", 1.01, 1.3, 0, 0, 0, 1.0)
-#
-# UD = T_line(Uno, Dos, 0, 0.1, 0, 0, 1)
-# UT = T_line(Uno, Tres, 0, 0.25, 0, 0, 1)
-# DT = T_line(Dos, Tres, 0, 0.2, 0, 0, 1)
-# #
-# Tres_1 = Bus("Tres_1", "PV", 1.01, 1.3, 0, 0, 0, 1.0)
-# Dos_1 = Bus("Dos_1", "PQ", 1.00, 0, 0, 0.9, 0.5, 0)
-# Uno_1 = Bus("Uno_1", "SL", 1.00, 0, 0, 0, 0, 0)
-#
-# UD_1 = T_line(Uno_1, Dos_1, 0, 0.1, 0, 0, 1)
-# UT_1 = T_line(Uno_1, Tres_1, 0, 0.25, 0, 0, 1)
-# DT_1 = T_line(Dos_1, Tres_1, 0, 0.2, 0, 0, 1)
-# #
-# # # HURRAY!!!!! This works and mirrors my homework problem
-# print("\n")
-# print(Newton_Raphson(np.array([Uno, Dos, Tres]), np.array([UD, UT, DT]), 1, 0.05, 100, 0.01, "HW3"))
-# print("\n")
-# print(Newton_Raphson(np.array([Tres_1, Uno_1, Dos_1]), np.array([UD_1, UT_1, DT_1]), 1, 0.01))
-
-"""
-======================
-Class Example
-======================
-"""
-
