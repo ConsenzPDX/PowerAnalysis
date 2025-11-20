@@ -1,7 +1,7 @@
 """
 EE 430 Power Analytical Methods of Power Systems - Fall 2025
 Term Project - Newton-Raphson Algorithm
-Joshua Consenz - 11/17/25
+Joshua Consenz - 11/19/25
 
 Creates a five bus system with six transmission lines, and implements the Newton-Raphson algorithm to solve the system
 from an initial state to a steady state.
@@ -21,7 +21,6 @@ import copy
 from Functions import *
 from bus import Bus
 from t_line import T_line
-
 
 def to_polar(y : complex) -> tuple:
     """
@@ -48,19 +47,17 @@ def build_ybus_rect(buses: np.ndarray, t_lines: np.ndarray) -> np.ndarray:
                 # Checks and assigns the off-diagonal elements based on what buses the transmission line connects
                 if ((t_lines[k].start == buses[i] and t_lines[k].end == buses[j]) or
                         (t_lines[k].start == buses[j] and t_lines[k].end == buses[i])):
-                    g_temp = t_lines[k].Gsh
-                    b_temp = t_lines[k].Bsh
-                    y_bus[i,j] = -1*complex(g_temp,b_temp)
-                # Checks and assigns diagonal elements if the transmission line touches the relevant bus
+                    y_bus[i,j] = -1*complex(t_lines[k].Gsh,t_lines[k].Bsh)
+                # Checks if the transmission line touches the relevant bus, and adds its admittance to the sum
                 elif (t_lines[k].start == buses[i] or t_lines[k].end == buses[j]) and i == j:
-                    g_temp = t_lines[k].Gsh
-                    b_temp = t_lines[k].Bsh
-                    y_bus[i, j] += complex(g_temp,b_temp)
+                    y_bus[i, j] += complex(t_lines[k].Gsh,t_lines[k].Bsh)
     return y_bus
 
 def build_ybus_polar(y_bus_rect: np.ndarray) -> np.ndarray:
     """
     Converts a Ybus in rectangular complex format to a Ybus with complex numbers in polar form
+    Ybus[o] = magnitude
+    Ybus[1] = angle
     :param y_bus_rect: an nxn matrix of a Ybus with complex values in rectangular format
     :return: an nxn matrix of the input Ybus matrix with the complex numbers changed to polar form as a tuple
     """
@@ -82,6 +79,7 @@ def build_unknown(buses: np.ndarray) -> np.ndarray:
     :param buses: array of buses in system
     :return: unknown matrix using tuples
     """
+    # Create empty arrays for the voltage and angle arrays
     delta = np.zeros(buses.shape, tuple)
     voltage = np.zeros(buses.shape, tuple)
     for bus in buses:
@@ -90,9 +88,10 @@ def build_unknown(buses: np.ndarray) -> np.ndarray:
         elif bus.type == "PQ":
             delta[bus.index] = (bus.index, "d", bus.angle)
             voltage[bus.index] = (bus.index, "v", bus.volts)
+    # Remove the unfilled in elements of the arrays
     delta = delta[delta != 0]
     voltage = voltage[voltage != 0]
-    unknown = np.concatenate((delta, voltage))
+    unknown = np.concatenate((delta, voltage)) # Concatonate the arrays together
     return unknown
 
 def build_mismatch(buses: np.ndarray) -> np.ndarray:
@@ -104,6 +103,7 @@ def build_mismatch(buses: np.ndarray) -> np.ndarray:
     :param buses: array of buses in system
     :return: mismatch matrix using tuples
     """
+    # Create empty arrays for P and Q arrays
     P = np.zeros(buses.shape, tuple)
     Q = np.zeros(buses.shape, tuple)
     for bus in buses:
@@ -112,9 +112,10 @@ def build_mismatch(buses: np.ndarray) -> np.ndarray:
         elif bus.type == "PQ":
             P[bus.index] = (bus.index, "P", bus.netP)
             Q[bus.index] = (bus.index, "Q", bus.netQ)
+    # Remove empty elements from arrays
     P = P[P != 0]
     Q = Q[Q != 0]
-    mismatch = np.concatenate((P, Q))
+    mismatch = np.concatenate((P, Q)) # Concatenate the arrays together into mismatch
     return mismatch
 
 def calc_p_at_bus(buses: np.ndarray, ybus: np.ndarray, i: int) -> float:
@@ -182,10 +183,6 @@ def J1_NE(bus1: Bus, bus2: Bus, ybus: np.ndarray) -> float:
     d_j = bus2.angle
     theta_ij = ybus[bus1.index,bus2.index][1]
     j1 = v_i * y_ij * v_j * math.sin(d_i - d_j - theta_ij)
-    # print("="*50)
-    # print("v_i:", v_i, "v_j:",v_j, "d_i:", d_i, "d_j:", d_j, "y_ij",y_ij, "theta_ij:",theta_ij)
-    # print("="*50)
-    # quit()
     return j1
 
 def J2_NE(bus1: Bus, bus2: Bus, ybus: np.ndarray) -> float:
@@ -564,36 +561,32 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTole
     # Boolean that is checked every for loop to see if system has converged
     converged = False
 
+    # Create the specified half of the mismatch matrix
+    mismatch_specified = build_mismatch(buses)
+
     # Loop to determine convergence. Stops after iterations in case convergence isn't reached
     for k in range(iterations):
 
         unknown_k = build_unknown(buses)  # Create unknown matrix from current conditions
 
         "Step 3: Set up the mismatch matrix"
-        # Create the specified half of the mismatch matrix
-        mismatch_specified = build_mismatch(buses)
-
-        # Creates a dummy copy of the buses to store values and use in calculations
-        buses_copy = np.zeros_like(buses)
-        for j in range(len(buses)):
-            buses_copy[j] = copy.deepcopy(buses[j])
-
-        # Create calculated values for the mismatch matrix
-        for val in mismatch_specified:
-            index = val[0]
+        # Create empty calculated half of the mismatch matrix
+        mismatch_calculated = np.zeros(len(mismatch_specified))
+        # Using the value types from the specified matrix, populate the calculated matrix with the most current
+        # P and Q values
+        for j in range(len(mismatch_specified)):
+            val = mismatch_specified[j]
             if val[1] == "P":
-                buses_copy[index].netP = calc_p_at_bus(buses_copy, yBusPolar, val[0])
+                mismatch_calculated[j] = calc_p_at_bus(buses, yBusPolar, val[0])
             elif val[1] == "Q":
-                buses_copy[index].netQ = calc_q_at_bus(buses_copy, yBusPolar, val[0])
-        # Build the calculated portion of the mismatch matrix
-        mismatch_calculated = build_mismatch(buses_copy)
+                mismatch_calculated[j] = calc_q_at_bus(buses, yBusPolar, val[0])
 
         # Create complete mismatch matrix as an array of floats for calculations
         # mismatch_specified will be used for checking if the matrix has a P or Q value
         mismatch = np.zeros(len(mismatch_specified))
         for j in range(len(mismatch_specified)):
             # Subtract specified - calculated for each bus
-            mismatch[j] = mismatch_specified[j][2] - mismatch_calculated[j][2]
+            mismatch[j] = mismatch_specified[j][2] - mismatch_calculated[j]
 
         "Step 4: Create and fill in the Jacobian"
         Jacobian = create_jacobian(buses, yBusPolar)
@@ -611,8 +604,10 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTole
         # Update voltage and angle values of the buses
         for i in range(len(unknown_k)):
             index = unknown_k[i][0]
+            # Update the bus angle
             if unknown_k[i][1] == "d":
                 buses[index].angle = unknown_k1[i]
+            # Update the bus voltage
             elif unknown_k[i][1] == "v":
                 buses[index].volts = unknown_k1[i]
 
