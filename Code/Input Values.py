@@ -37,10 +37,10 @@ CE = T_line(Clyde, Eve, 0.010, 0.051, 0.000, 0.000, 75)
 # Collect buses and transmission lines into arrays to pass to looping function
 busArray = np.array([Alan, Betty, Clyde, Doug, Eve])
 tLineArray = np.array([AB, BE, AD, DE, DC, CE])
-
-FiveBus_PQ = Newton_Raphson(busArray, tLineArray, baseMVA, V_Tolerance, 100, 0.01, name)
+criterion = 1e-15
+FiveBus_PQ = Newton_Raphson(busArray, tLineArray, baseMVA, V_Tolerance, 100, criterion, name)
 
 prnt = np.zeros_like(FiveBus_PQ)
 for i in range(len(FiveBus_PQ)):
     prnt[i] = round(FiveBus_PQ[i], 3)
-print("Final Unknown matrix:", prnt)
+print("Final Unknown matrix:", FiveBus_PQ)

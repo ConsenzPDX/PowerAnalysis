@@ -610,7 +610,10 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTole
             # Update the bus voltage
             elif unknown_k[i][1] == "v":
                 buses[index].volts = unknown_k1[i]
-
+        print("Iteration", k+1)
+        for val in unknown_k1:
+            print(val)
+        print("\n")
         # Check for convergence by checking that all values in the mismatch are under the criterion
         if all(abs(power) < criterion for power in mismatch):
             converged = True
