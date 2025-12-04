@@ -560,16 +560,14 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, itera
     # Boolean that is checked every for loop to see if system has converged
     converged = False
 
-    # Create the specified half of the mismatch matrix
-    mismatch_specified = build_mismatch(buses)
-
-
     # Loop to determine convergence. Stops after iterations in case convergence isn't reached
     for k in range(iterations):
 
         unknown_k = build_unknown(buses)  # Create unknown matrix from current conditions
 
         "Step 3: Set up the mismatch matrix"
+        # Create the specified half of the mismatch matrix
+        mismatch_specified = build_mismatch(buses)
         # Create empty calculated half of the mismatch matrix
         mismatch_calculated = np.zeros(len(mismatch_specified))
         # Using the value types from the specified matrix, populate the calculated matrix with the most current
@@ -630,12 +628,12 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, itera
             end_time = time.time()
             length = end_time - start_time
             # Print message as an fString
-            print(f"System converged in {k} Iterations over {round(length, 3)} seconds")
+            print(f"System converged in {k} Iterations over {length} seconds")
             break
 
     # Message to the user in case the system didn't converge
     if not converged:
         end_time = time.time()
         length = end_time - start_time
-        print(f"System did not converge after {k} Iterations over {round(length,3)} seconds")
+        print(f"System did not converge after {k} Iterations over {length} seconds")
     return unknown_k1
