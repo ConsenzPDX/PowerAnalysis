@@ -506,7 +506,7 @@ def create_jacobian(buses: np.ndarray, ybus: np.ndarray) -> np.ndarray:
 Newton-Raphson Algorithm
 =============================
 """
-def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTolerance: float, iterations = 15,
+def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, iterations = 15,
                    criterion = 0.01, name = "System") -> np.ndarray:
     """
     Newton-Raphson Algorithm designed to operate on a system of buses and transmission lines.
@@ -516,7 +516,6 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTole
     :param buses: Numpy Array of the buses that describe the system being analyzed
     :param tLines: Numpy Array of the transmission lines that connect the busses in the system
     :param base_mva: Base real power value to convert all P and Q values into per unit values
-    :param vTolerance: Voltage tolerance TODO: figure this out and create description
     :param iterations: The maximum number of iterations allowed the program, if unspecified iterations = 10
     :param criterion: Convergence criterion for the mismatch matrix. If unspecified, it is 1%
     :param name: Name of the system
@@ -564,6 +563,11 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTole
     # Create the specified half of the mismatch matrix
     mismatch_specified = build_mismatch(buses)
 
+    # Setting values for Plotting
+    # oldJ1 = 0
+    # oldJ2 = 0
+    # oldJ3 = 0
+    # oldJ4 = 0
     # Loop to determine convergence. Stops after iterations in case convergence isn't reached
     for k in range(iterations):
 
@@ -590,7 +594,56 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTole
 
         "Step 4: Create and fill in the Jacobian"
         Jacobian = create_jacobian(buses, yBusPolar)
-        # TODO: verify this is correct with hand calculations for original input system
+
+        "Plot Jacobian Sensitivities"
+        # plt.imshow(Jacobian, interpolation = 'none')
+        # plt.title(f"Jacobian Heatmap for Iteration {k}")
+        # plt.legend(loc = 'upper left')
+        # plt.show()
+
+        # n = len(buses)  # number of buses
+        # m = 0  # number of PV buses
+        # for bus in buses:
+        #     if bus.type == "PV":
+        #         m += 1
+
+        # J1 = build_J1(buses, yBusPolar, n)
+        # J2 = build_J2(buses, yBusPolar, n, m)
+        # J3 = build_J3(buses, yBusPolar, n, m)
+        # J4 = build_J4(buses, yBusPolar, n, m)
+        #
+        # diff1 = J1 - oldJ1
+        # diff2 = J2 - oldJ2
+        # diff3 = J3 - oldJ3
+        # diff4 = J4 - oldJ4
+        #
+        # plt.imshow(diff1, interpolation  = 'none')
+        # plt.title(f"∂P/∂δ Difference for Iteration {k}")
+        # plt.savefig(f"dP_d_delta Difference for Iteration {k}")
+        #
+        # plt.imshow(diff2, interpolation='none')
+        # plt.title(f"∂P/∂V Difference for Iteration {k}")
+        # plt.savefig(f"dP_dV Difference for Iteration {k}")
+        #
+        # plt.imshow(diff3, interpolation='none')
+        # plt.title(f"∂Q/∂δ Difference for Iteration {k}")
+        # plt.savefig(f"dQ_d_delta Difference for Iteration {k}")
+        #
+        # plt.imshow(diff4, interpolation='none')
+        # plt.title(f"∂Q/∂V Difference for Iteration {k}")
+        # plt.savefig(f"dQ_dV Difference for Iteration {k}")
+        #
+        # print("Iteration: ", k)
+        # print("dP/ddelta: ", diff1)
+        # print("dP/dV: ", diff2)
+        # print("dQ/ddelta: ", diff3)
+        # print("dQ/dV: ", diff4, "\n")
+        #
+        # oldJ1 = J1
+        # oldJ2 = J2
+        # oldJ3 = J3
+        # oldJ4 = J4
+
 
         "Update Unknown Matrix"
         J_inverse = np.linalg.inv(Jacobian) # Invert the Jacobian for the calculation
@@ -610,10 +663,8 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTole
             # Update the bus voltage
             elif unknown_k[i][1] == "v":
                 buses[index].volts = unknown_k1[i]
-        print("Iteration", k+1)
-        for val in unknown_k1:
-            print(val)
-        print("\n")
+
+
         # Check for convergence by checking that all values in the mismatch are under the criterion
         if all(abs(power) < criterion for power in mismatch):
             converged = True
