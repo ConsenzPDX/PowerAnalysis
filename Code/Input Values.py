@@ -45,6 +45,13 @@ for i in range(len(FiveBus_PQ)):
     prnt[i] = round(FiveBus_PQ[i], 3)
 print("Final Unknown matrix:", prnt)
 
+
+"""
+==============================
+HW 3 Example System
+==============================
+"""
+
 print("\n")
 Uno = Bus("Uno", "SL", 1.0, 0, 0, 0, 0, 0)
 Dos = Bus("Dos", "PQ", 1.00, 0, 0, 0.9, 0.5, 0)
