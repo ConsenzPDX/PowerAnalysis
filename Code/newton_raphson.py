@@ -506,7 +506,7 @@ def create_jacobian(buses: np.ndarray, ybus: np.ndarray) -> np.ndarray:
 Newton-Raphson Algorithm
 =============================
 """
-def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTolerance: float, iterations = 15,
+def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, iterations = 15,
                    criterion = 0.01, name = "System") -> np.ndarray:
     """
     Newton-Raphson Algorithm designed to operate on a system of buses and transmission lines.
@@ -516,7 +516,6 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTole
     :param buses: Numpy Array of the buses that describe the system being analyzed
     :param tLines: Numpy Array of the transmission lines that connect the busses in the system
     :param base_mva: Base real power value to convert all P and Q values into per unit values
-    :param vTolerance: Voltage tolerance TODO: figure this out and create description
     :param iterations: The maximum number of iterations allowed the program, if unspecified iterations = 10
     :param criterion: Convergence criterion for the mismatch matrix. If unspecified, it is 1%
     :param name: Name of the system
@@ -564,6 +563,7 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTole
     # Create the specified half of the mismatch matrix
     mismatch_specified = build_mismatch(buses)
 
+
     # Loop to determine convergence. Stops after iterations in case convergence isn't reached
     for k in range(iterations):
 
@@ -590,7 +590,6 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTole
 
         "Step 4: Create and fill in the Jacobian"
         Jacobian = create_jacobian(buses, yBusPolar)
-        # TODO: verify this is correct with hand calculations for original input system
 
         "Update Unknown Matrix"
         J_inverse = np.linalg.inv(Jacobian) # Invert the Jacobian for the calculation
@@ -610,10 +609,8 @@ def Newton_Raphson(buses: np.ndarray, tLines: np.ndarray, base_mva: float, vTole
             # Update the bus voltage
             elif unknown_k[i][1] == "v":
                 buses[index].volts = unknown_k1[i]
-        print("Iteration", k+1)
-        for val in unknown_k1:
-            print(val)
-        print("\n")
+
+
         # Check for convergence by checking that all values in the mismatch are under the criterion
         if all(abs(power) < criterion for power in mismatch):
             converged = True

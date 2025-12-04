@@ -37,10 +37,28 @@ CE = T_line(Clyde, Eve, 0.010, 0.051, 0.000, 0.000, 75)
 # Collect buses and transmission lines into arrays to pass to looping function
 busArray = np.array([Alan, Betty, Clyde, Doug, Eve])
 tLineArray = np.array([AB, BE, AD, DE, DC, CE])
-criterion = 1e-15
-FiveBus_PQ = Newton_Raphson(busArray, tLineArray, baseMVA, V_Tolerance, 100, criterion, name)
+criterion = 1e-2
+FiveBus_PQ = Newton_Raphson(busArray, tLineArray, baseMVA, 100, criterion, name)
 
 prnt = np.zeros_like(FiveBus_PQ)
 for i in range(len(FiveBus_PQ)):
     prnt[i] = round(FiveBus_PQ[i], 3)
-print("Final Unknown matrix:", FiveBus_PQ)
+print("Final Unknown matrix:", prnt)
+
+print("\n")
+Uno = Bus("Uno", "SL", 1.0, 0, 0, 0, 0, 0)
+Dos = Bus("Dos", "PQ", 1.00, 0, 0, 0.9, 0.5, 0)
+Tres = Bus("Tres", "PV", 1.01, 1.3, 0, 0, 0, 10)
+
+UD = T_line(Uno, Dos, 0, 0.1, 0, 0, 1)
+UT = T_line(Uno, Tres, 0, 0.25, 0, 0, 0)
+DT = T_line(Dos, Tres, 0, 0.2, 0, 0, 0)
+
+exampleBus = np.array([Uno, Dos, Tres])
+exampleTLine = np.array([UD, UT, DT])
+HW3 = Newton_Raphson(exampleBus, exampleTLine, 1, 100, criterion, "HW3 Example")
+
+prnt = np.zeros_like(HW3)
+for i in range(len(HW3)):
+    prnt[i] = round(HW3[i], 3)
+print("Final Unknown matrix:", prnt)
